@@ -1,3 +1,11 @@
+#define _FILE_OFFSET_BITS 64
+
+//to do stuff with the elf
+#include "elfUtils.h"
+
+//to see errors
+#include "costumErrors.h"
+
 //to print
 #include <stdio.h>
 
@@ -25,11 +33,7 @@
 //for tolower() in the parsing of the input
 #include <ctype.h>
 
-//to see errors
-#include "costumErrors.h"
 
-//to ???
-#include "elfUtils.h"
 
 static unsigned long long base_address_number = 0;
 static char* filename = NULL;

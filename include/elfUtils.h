@@ -1,3 +1,5 @@
+#pragma once
+
 //call this before you do anything and you have to get 0.
 int initElfUtils(char const *filename, unsigned long long entryP);
 
