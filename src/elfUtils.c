@@ -1,13 +1,15 @@
 //this will force it to be 64 bits
 #define _FILE_OFFSET_BITS 64
 
+#include "costumErrors.h"
+#include "elfUtils.h"
+
 #include <elf.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
-#include "costumErrors.h"
-#include "elfUtils.h"
+
 
 
 /**
@@ -124,11 +126,12 @@ FILE *file = NULL;
 
 
 /**
- * Copies all values in elf32 to elf64.
+ * Copies all values in elf32_ehdr_p to elf64_ehdr_p.
 */
-static void copyAllElf32ToElf64(Elf32_Ehdr *elf32, Elf64_Addr *elf64){
-  elf64->e_ident = elf32->e_ident;
-  
+static void copyElf32_EhdrToElf64_Ehdr(Elf32_Ehdr *elf32_ehdr_p, Elf64_Addr *elf64_ehdr_p){
+  //elf64->e_ident = elf32->e_ident;
+  //EI_NIDENT = sizeof(Elf32_Ehdr.e_ident) == sizeof(Elf64_Addr.e_ident) == 16
+  memcpy(elf64_ehdr_p.e_ident, elf32_ehdr_p, EI_NIDENT);
 }
 
 
@@ -148,7 +151,7 @@ static int setupElf_ehdr(void){
   if(!is64BitElf){
     Elf32_Ehdr elf32_Ehdr_tmp;
     fread(&elf32_Ehdr_tmp, 1, sizeof(Elf32_Ehdr), file);
-    
+    copyElf32ToElf64(&elf32_Ehdr_tmp, &elf_Ehdr);
   }
   else
     amount_to_read = sizeof(Elf32_Ehdr);
@@ -235,10 +238,7 @@ int initElfUtils(char const *filename, unsigned long long entryP){
   //maybe I should do something with the EI_DATA?
 
   if (entryP != ULLONG_MAX){
-    if (is64BitElf)
-      elf_Ehdr.elf64.e_entry = entryP;
-    else
-      elf_Ehdr.elf32.e_entry = entryP;
+      elf_Ehdr.e_entry = entryP;
   }
   return 0;
 }
@@ -255,11 +255,7 @@ int initElfUtils(char const *filename, unsigned long long entryP){
  * @note can make larger with this https://refspecs.linuxfoundation.org/elf/gabi4+/ch4.eheader.html
 */
 const char* getArch(void){
-  Elf32_Half machine;
-  if(is64BitElf)
-    machine = elf_Ehdr.elf64.e_machine;
-  else
-    machine = elf_Ehdr.elf32.e_machine;
+  Elf32_Half machine = elf_Ehdr.e_machine;
   
   switch(machine){
     case EM_M32:
@@ -313,11 +309,7 @@ const char* getArch(void){
 int getEndiannessEncoding(){
   //can read everything with the endianess thing.
 
-  char encodingByte;
-  if (is64BitElf)
-    encodingByte = elf_Ehdr.elf64.e_ident[EI_DATA];
-  else
-    encodingByte = elf_Ehdr.elf32.e_ident[EI_DATA];
+  char encodingByte = elf_Ehdr.e_ident[EI_DATA];
   
   if(encodingByte == ELFDATANONE){
     err("Invalid data encoding for the file.");
@@ -339,11 +331,7 @@ int getEndiannessEncoding(){
  * @note 0 is None.
 */
 unsigned long long getEntryPoint(void){
-  if(is64BitElf)
-    return elf_Ehdr.elf64.e_entry;
-  
-  //32 bit:
-  return elf_Ehdr.elf32.e_entry;
+  return elf_Ehdr.e_entry;
 }
 
 /**
@@ -371,9 +359,9 @@ void showScanSections(void){
   //I will start by writing the 32 bit version and then I will divide it.
 
   //I can make this a long long
-  Elf32_Off location = elf_Ehdr.elf32.e_shoff;
+  Elf64_Off location = elf_Ehdr.e_shoff;
 
-  
+  printf("location: %ld\n", location);
 
   //Elf64_Off is uint64_t, but fseek is getting long	
   //if (fseek(file, location, SEEK_SET))
