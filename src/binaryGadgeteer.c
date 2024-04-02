@@ -142,7 +142,6 @@ int main(int argc, char *argv[])
     ZydisEncoderRequest req;
     memset(&req, 0, sizeof(req));
 
-    printf("HI\n");
     /*
     req.mnemonic = ZYDIS_MNEMONIC_MOV;
     req.machine_mode = ZYDIS_MACHINE_MODE_LONG_64; //find a way to now write that each time maybe?
