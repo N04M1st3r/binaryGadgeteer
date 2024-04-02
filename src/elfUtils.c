@@ -126,12 +126,28 @@ FILE *file = NULL;
 
 
 /**
- * Copies all values in elf32_ehdr_p to elf64_ehdr_p.
+ * Copies all values in elf32_Ehdr_p to elf64_Ehdr_p.
 */
-static void copyElf32_EhdrToElf64_Ehdr(Elf32_Ehdr *elf32_ehdr_p, Elf64_Addr *elf64_ehdr_p){
+static void copyElf32_EhdrToElf64_Ehdr(Elf32_Ehdr *elf32_Ehdr_p, Elf64_Ehdr *elf64_Ehdr_p){
   //elf64->e_ident = elf32->e_ident;
+  
   //EI_NIDENT = sizeof(Elf32_Ehdr.e_ident) == sizeof(Elf64_Addr.e_ident) == 16
-  memcpy(elf64_ehdr_p.e_ident, elf32_ehdr_p, EI_NIDENT);
+  memcpy(&(elf64_Ehdr_p->e_ident), &(elf32_Ehdr_p->e_ident), EI_NIDENT);
+  elf64_Ehdr_p->e_type = elf32_Ehdr_p->e_type;
+  elf64_Ehdr_p->e_machine = elf32_Ehdr_p->e_machine;
+  elf64_Ehdr_p->e_version = elf32_Ehdr_p->e_version;
+  elf64_Ehdr_p->e_entry = elf32_Ehdr_p->e_entry;
+  elf64_Ehdr_p->e_phoff = elf32_Ehdr_p->e_phoff;
+  elf64_Ehdr_p->e_shoff = elf32_Ehdr_p->e_shoff;
+  elf64_Ehdr_p->e_flags = elf32_Ehdr_p->e_flags;
+  elf64_Ehdr_p->e_ehsize = elf32_Ehdr_p->e_ehsize;
+  elf64_Ehdr_p->e_phentsize = elf32_Ehdr_p->e_phentsize;
+  elf64_Ehdr_p->e_phnum = elf32_Ehdr_p->e_phnum;
+  elf64_Ehdr_p->e_shentsize = elf32_Ehdr_p->e_shentsize;
+  elf64_Ehdr_p->e_shnum = elf32_Ehdr_p->e_shnum;
+  elf64_Ehdr_p->e_shstrndx = elf32_Ehdr_p->e_shstrndx;
+
+
 }
 
 
@@ -147,20 +163,21 @@ static int setupElf_ehdr(void){
     return 1;
   }
 
-  size_t amount_to_read;
   if(!is64BitElf){
     Elf32_Ehdr elf32_Ehdr_tmp;
-    fread(&elf32_Ehdr_tmp, 1, sizeof(Elf32_Ehdr), file);
-    copyElf32ToElf64(&elf32_Ehdr_tmp, &elf_Ehdr);
+    if (fread(&elf32_Ehdr_tmp, 1, sizeof(Elf32_Ehdr), file) != sizeof(Elf32_Ehdr)){
+      err("Couldnt read elf header, the file spesification. in setupElf_ehdr");
+      return 2;
+    }
+    copyElf32_EhdrToElf64_Ehdr(&elf32_Ehdr_tmp, &elf_Ehdr);
   }
-  else
-    amount_to_read = sizeof(Elf32_Ehdr);
-
-  if (fread(&elf_Ehdr, 1, amount_to_read, file) != amount_to_read){
-    err("Couldnt read elf header, the file spesification. in setupElf_ehdr");
-    return 2;
+  else {
+    if (fread(&elf_Ehdr, 1, sizeof(Elf64_Ehdr), file) != sizeof(Elf64_Ehdr)){
+      err("Couldnt read elf header, the file spesification. in setupElf_ehdr");
+      return 2;
+    }
   }
-
+  
   return 0;
 }
 
