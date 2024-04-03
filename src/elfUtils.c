@@ -345,7 +345,14 @@ static void showSection(Elf64_Off sectionHdrOff){
   address += section.sh_name;
 
   printf("location: 0x%" PRIx64 "\n", address);
-  printf("%s\n\n", stringTable.data + section.sh_name);
+  printf("%s  ", stringTable.data + section.sh_name);
+
+  //sh_flags
+  if ( (section.sh_flags & SHF_EXECINSTR) ){
+    printf("Executable");
+  }
+  printf("\n\n\n\n");
+
 }
 
 /**
