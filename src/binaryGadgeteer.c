@@ -140,8 +140,15 @@ int main(int argc, char *argv[])
     printf("%s\n", getArch());
 
     //endianess:
-    printf("little endian(1), big(2): %d\n", getEndiannessEncoding());
+    //printf("little endian(1), big(2): %d\n", getEndiannessEncoding());
 
+
+    showScanSections();
+
+
+    if(cleanElfUtils()){
+        err("Error cleaning elfUtils, in cleanElfUtils inside main.\n");
+    }
     exit(0);
     ZydisEncoderRequest req;
     memset(&req, 0, sizeof(req));
