@@ -4,10 +4,13 @@
 int initElfUtils(char const *filename, unsigned long long entryP);
 
 //call this when you finish using this class.
-void cleanElfUtils(void);
+int cleanElfUtils(void);
 
 const char* getArch(void);
 
 unsigned long long getEntryPoint(void);
+void showScanSections(void);
 
+int getEndiannessEncoding(void);
+//could have used libelf but I want to create it myself.
 

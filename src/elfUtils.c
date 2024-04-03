@@ -1,3 +1,8 @@
+/**
+ * @author N0am
+ * @date TODO
+ * @name elfUtils.c
+*/
 //this will force it to be 64 bits
 #define _FILE_OFFSET_BITS 64
 
@@ -9,7 +14,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <inttypes.h>
 
+static void copyElf32_EhdrToElf64_Ehdr(Elf32_Ehdr *, Elf64_Ehdr *);
+static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *, Elf64_Shdr *);
+static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *, Elf64_Shdr *);
+static int setupElf_ehdr(void);
+static int setupBits(void);
+static const char* getSectionName(Elf64_Word sh_name);
+static int initStringTable(void);
+static int getSectionHdrByOffset(Elf64_Shdr *result_Shdr, Elf64_Off sectionHdrOff);
+static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_index);
+static void showSection(Elf64_Off sectionHdrOff);
+
+//BAD: DEL LATER XD
+#define SUPPRESS_WARNING(a) (void)a
 
 
 /**
@@ -19,96 +38,6 @@
  * 
  * for a another implemenation you may look at elfcommon.c in binutils
 */
-
-#if 0
-
-typedef __u16	Elf32_Half; // same as 64
-typedef __u32	Elf32_Word; // same as 64
-
-typedef __u32	Elf32_Off;
-typedef __u32	Elf32_Addr;
-
-
-typedef __u16	Elf64_Half; // same as 32
-typedef __u32	Elf64_Word; // same as 32
-
-typedef __u64	Elf64_Off;
-typedef __u64	Elf64_Addr;
-
-
-#define EI_NIDENT	16
-
-typedef struct elf32_hdr {
-  unsigned char	e_ident[EI_NIDENT];
-  Elf32_Half	e_type;
-  Elf32_Half	e_machine;
-  Elf32_Word	e_version;
-  Elf32_Addr	e_entry;  /* Entry point */
-  Elf32_Off	e_phoff;
-  Elf32_Off	e_shoff;
-  Elf32_Word	e_flags;
-  Elf32_Half	e_ehsize;
-  Elf32_Half	e_phentsize;
-  Elf32_Half	e_phnum;
-  Elf32_Half	e_shentsize;
-  Elf32_Half	e_shnum;
-  Elf32_Half	e_shstrndx;
-} Elf32_Ehdr;
-
-typedef struct elf64_hdr {
-  unsigned char	e_ident[EI_NIDENT];	/* ELF "magic number" */
-  Elf64_Half e_type;
-  Elf64_Half e_machine;
-  Elf64_Word e_version;
-  Elf64_Addr e_entry;		/* Entry point virtual address */
-  Elf64_Off e_phoff;		/* Program header table file offset */
-  Elf64_Off e_shoff;		/* Section header table file offset */
-  Elf64_Word e_flags;
-  Elf64_Half e_ehsize;
-  Elf64_Half e_phentsize;
-  Elf64_Half e_phnum;
-  Elf64_Half e_shentsize;
-  Elf64_Half e_shnum;
-  Elf64_Half e_shstrndx;
-} Elf64_Ehdr;
-
-
-
-
-
-
-
-
-
-/* Section header.  */
-typedef struct
-{
-  Elf32_Word	sh_name;		/* Section name (string tbl index) */
-  Elf32_Word	sh_type;		/* Section type */
-  Elf32_Word	sh_flags;		/* Section flags */
-  Elf32_Addr	sh_addr;		/* Section virtual addr at execution */
-  Elf32_Off	sh_offset;		/* Section file offset */
-  Elf32_Word	sh_size;		/* Section size in bytes */
-  Elf32_Word	sh_link;		/* Link to another section */
-  Elf32_Word	sh_info;		/* Additional section information */
-  Elf32_Word	sh_addralign;		/* Section alignment */
-  Elf32_Word	sh_entsize;		/* Entry size if section holds table */
-} Elf32_Shdr;
-typedef struct
-{
-  Elf64_Word	sh_name;		/* Section name (string tbl index) */
-  Elf64_Word	sh_type;		/* Section type */
-  Elf64_Xword	sh_flags;		/* Section flags */
-  Elf64_Addr	sh_addr;		/* Section virtual addr at execution */
-  Elf64_Off	sh_offset;		/* Section file offset */
-  Elf64_Xword	sh_size;		/* Section size in bytes */
-  Elf64_Word	sh_link;		/* Link to another section */
-  Elf64_Word	sh_info;		/* Additional section information */
-  Elf64_Xword	sh_addralign;		/* Section alignment */
-  Elf64_Xword	sh_entsize;		/* Entry size if section holds table */
-} Elf64_Shdr;
-
-#endif
 
 
 /*
@@ -125,6 +54,18 @@ bool is64BitElf;
 static Elf64_Ehdr elf_Ehdr;
 
 FILE *file = NULL;
+
+//static char *stringTable = NULL;
+static struct{
+  Elf64_Shdr Shdr;
+  char *data;
+} stringTable = {.data = NULL};
+
+
+//maybe save the String Table here.
+//costum struct for "String table", it is pretty naive but I will just 
+//struct 
+
 
 
 /**
@@ -148,6 +89,22 @@ static void copyElf32_EhdrToElf64_Ehdr(Elf32_Ehdr *elf32_Ehdr_p, Elf64_Ehdr *elf
   elf64_Ehdr_p->e_shentsize = elf32_Ehdr_p->e_shentsize;
   elf64_Ehdr_p->e_shnum = elf32_Ehdr_p->e_shnum;
   elf64_Ehdr_p->e_shstrndx = elf32_Ehdr_p->e_shstrndx;
+}
+
+/**
+ * Copies all values in elf32_Shdr_p to elf64_Shdr_p.
+*/
+static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *elf32_Shdr_p, Elf64_Shdr *elf64_Shdr_p){
+  elf64_Shdr_p->sh_name = elf32_Shdr_p->sh_name;
+  elf64_Shdr_p->sh_type = elf32_Shdr_p->sh_type;
+  elf64_Shdr_p->sh_flags = elf32_Shdr_p->sh_flags;
+  elf64_Shdr_p->sh_addr = elf32_Shdr_p->sh_addr;
+  elf64_Shdr_p->sh_offset = elf32_Shdr_p->sh_offset;
+  elf64_Shdr_p->sh_size = elf32_Shdr_p->sh_size;
+  elf64_Shdr_p->sh_link = elf32_Shdr_p->sh_link;
+  elf64_Shdr_p->sh_info = elf32_Shdr_p->sh_info;
+  elf64_Shdr_p->sh_addralign = elf32_Shdr_p->sh_addralign;
+  elf64_Shdr_p->sh_entsize = elf32_Shdr_p->sh_entsize;
 }
 
 
@@ -228,6 +185,169 @@ static int setupBits(void){
 }
 
 
+
+
+/**
+ * Gets the section name from String table using Elf32_Shdr.sh_name
+ * 
+ * @return section name.
+ * 
+ * @note in the string table the sh_name needs to end with \0 (room for vulnerability btw)
+*/
+static const char* getSectionName(Elf64_Word sh_name){
+  //bullshit:
+  SUPPRESS_WARNING(sh_name);
+  
+  
+
+  //end bullshit
+
+  //TODO fix endianess if I want
+  //elf_Ehdr.e_shstrndx
+  
+  /*if (fseek(file, sh_name + elf_Ehdr.e_shstrndx, SEEK_SET) != 0){
+    perror("error.");
+    err("Error in fseek at setupElf_ehdr");
+    return 1;
+  }
+
+  if(!is64BitElf){
+    Elf32_Ehdr elf32_Ehdr_tmp;
+    if (fread(&elf32_Ehdr_tmp, 1, sizeof(Elf32_Ehdr), file) != sizeof(Elf32_Ehdr)){
+      err("Couldnt read elf header, the file spesification. in setupElf_ehdr");
+      return 2;
+  }*/
+
+  //TODO CONTINUE
+  return 0;
+}
+
+static void FIX_UNUSED_DEL(void){
+  //DEL LATER!
+  getSectionName((Elf64_Word)2);
+  getEndiannessEncoding();
+  
+}
+
+/**
+ * Initilizes the stringTable struct with the values from the file as needed.
+ * 
+ * @return 0 if sucess, else something else.
+ * 
+ * @note using malloc into stringTable.data!
+*/
+static int initStringTable(void){
+  if (getSectionHdrByIndex(&stringTable.Shdr, elf_Ehdr.e_shstrndx)){
+    err("Error in getSectionHdrByIndex at InitStringTable.\n");
+    return 1;
+  }
+
+  stringTable.data = malloc(stringTable.Shdr.sh_size);
+  if(stringTable.data == NULL){
+    // Malloc failed
+    perror("Malloc failed :()\n");
+    err("Malloc for stringTable.data failed inside initStringTable.\n");
+    return 2;
+  }
+  
+  if (fseek(file, stringTable.Shdr.sh_offset, SEEK_SET)){
+    perror("error.\n");
+    err("Error in fseek at InitStringTable, seeking to 0x%" PRIx64 "\n", stringTable.Shdr.sh_offset);
+    return 3;
+  }
+
+  if (fread(stringTable.data, 1, stringTable.Shdr.sh_size, file) != stringTable.Shdr.sh_size){
+    err("Error in fread at InitStringTable, raeding to 0x%" PRIx64 "from 0x% " PRIX64 "\n", stringTable.data, stringTable.Shdr.sh_size);
+    return 4;
+  }
+
+  return 0;
+}
+
+
+/**
+ * Gets the section header at file offset sectionHdrOff of size elf_Ehdr.e_shentsize, into result_Shdr.
+ * 
+ * @param result_Shdr, where the resulting section header will go.
+ * @param sectionHdrOff,  section header offset in the file.
+ * 
+ * @return 0 is sucess, anything else if error.
+ * 
+ * @note if 32 bits will make it fit to the 64 one, assuming result_Shdr is already allocated space.
+*/
+static int getSectionHdrByOffset(Elf64_Shdr *result_Shdr, Elf64_Off sectionHdrOff){
+  if (fseek(file, sectionHdrOff, SEEK_SET) != 0){
+    perror("error.");
+    err("Error in fseek at getSectionHdrByOffset");
+    return 1;
+  }
+
+  if(!is64BitElf){
+    //32 bits
+    Elf32_Shdr elf32_Shdr_tmp;
+    if (fread(&elf32_Shdr_tmp, 1, elf_Ehdr.e_shentsize, file) != elf_Ehdr.e_shentsize){
+      err("Couldnt read section header, the file spesification. in getSectionHdrByOffset at offset and size");
+      return 2;
+    }
+
+    copyElf32_ShdrToElf64_Shdr(&elf32_Shdr_tmp, result_Shdr);
+  }else{
+    //64 bits
+    if (fread(result_Shdr, 1, elf_Ehdr.e_shentsize, file) != elf_Ehdr.e_shentsize){
+      err("Couldnt read section header, the file spesification. in getSectionHdrByOffset at offset and size");
+      return 2;
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * Gets the section header of the section_index'th section from the section table array 
+ * it is of size elf_Ehdr.e_shentsize, into result_Shdr.
+ * 
+ * 
+ * @param result_Shdr, where the resulting section header will go.
+ * @param section_index,  section header index in the section table array.
+ * 
+ * @return 0 is sucess, anything else if error.
+ * 
+ * @note if 32 bits will make it fit to the 64 one, assuming result_Shdr is already allocated space.
+*/
+static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_index){
+
+  //TODO: check if the section index is after the size of the sections here. (so no overflow read kinda)
+  Elf64_Off sectionHdrOff = elf_Ehdr.e_shoff + elf_Ehdr.e_shentsize*section_index;
+
+  if(getSectionHdrByOffset(result_Shdr, sectionHdrOff) != 0){
+    err("Error inside getSectionHdrByIndex, while calling getSectionHdrByOffset index 0x%" PRIx64 "\n", section_index);
+    return 1;
+  }
+
+  return 0;
+}
+
+/**
+ * Prints the section at sectionHdrOff of size sectionHdrSize info into stdout.
+ * 
+ * @param sectionHdrOff,  section header offset in the file.
+ * 
+ * @note if error writes there was an error, does not return anything special.
+*/
+static void showSection(Elf64_Off sectionHdrOff){
+  Elf64_Shdr section;
+  if(getSectionHdrByOffset(&section, sectionHdrOff)){
+    err("Error in showSection in getSection. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", sectionHdrOff, elf_Ehdr.e_shentsize);
+    return;
+  }
+
+  uint64_t address = elf_Ehdr.e_shstrndx;
+  address += section.sh_name;
+
+  printf("location: 0x%" PRIx64 "\n", address);
+  printf("%s\n\n", stringTable.data + section.sh_name);
+}
+
 /**
  * Initilizes the elf header into this Utils, this can work on one file at a time.
  * 
@@ -244,15 +364,20 @@ int initElfUtils(char const *filename, unsigned long long entryP){
   }
 
   //checks if the ELF is correct and sets if its 64 bit.
-  if(setupBits() != 0){
+  if(setupBits()){
     err("error in initElfUtils at setupBits.");
     return 2;
   }
 
 
-  if(setupElf_ehdr() != 0){
+  if(setupElf_ehdr()){
     err("error in initElfUtils at setupElf_ehdr");
     return 3;
+  }
+
+  if (initStringTable()){
+    err("Error in initElfUtils at initStringTable");
+    return 4;
   }
 
   //can add a check to see if elf header size is e_ehsize.
@@ -262,7 +387,9 @@ int initElfUtils(char const *filename, unsigned long long entryP){
   if (entryP != ULLONG_MAX){
       elf_Ehdr.e_entry = entryP;
   }
+
   return 0;
+  FIX_UNUSED_DEL(); //DEL LATER!
 }
 
 /**
@@ -328,7 +455,7 @@ const char* getArch(void){
  * 
  * @note: FOR NOW I DON'T SUPPORT OTHER ENDIANESS (ONLY FOR COMPILER COMPUTER ENDIANNESS)
 */
-static int getEndiannessEncoding(void){
+int getEndiannessEncoding(void){
   //can read everything with the endianess thing.
 
   char encodingByte = elf_Ehdr.e_ident[EI_DATA];
@@ -356,72 +483,9 @@ unsigned long long getEntryPoint(void){
   return elf_Ehdr.e_entry;
 }
 
-/**
- * Gets the section name from String table using Elf32_Shdr.sh_name
- * 
- * @return section name.
- * 
- * @note in the string table the sh_name needs to end with \0 (room for vulnerability btw)
-*/
-static const char* getSectionName(Elf64_Word sh_name){
-  //TODO fix endianess if I want
-  //elf_Ehdr.e_shstrndx
-  
-  /*if (fseek(file, sh_name + elf_Ehdr.e_shstrndx, SEEK_SET) != 0){
-    perror("error.");
-    err("Error in fseek at setupElf_ehdr");
-    return 1;
-  }
-
-  if(!is64BitElf){
-    Elf32_Ehdr elf32_Ehdr_tmp;
-    if (fread(&elf32_Ehdr_tmp, 1, sizeof(Elf32_Ehdr), file) != sizeof(Elf32_Ehdr)){
-      err("Couldnt read elf header, the file spesification. in setupElf_ehdr");
-      return 2;
-  }*/
-
-  //TODO CONTINUE
-
-}
 
 
-/**
- * Gets the section at sectionHdrOff of size sectionHdrSize, into result.
- * 
- * 
- * @param sectionHdrOff,  section header offset in the file.
- * @param sectionHdrSize, section header size in the file.
- * 
- * @note if 32 bits will make it fit to the 64 one, assuming result is already allocated space.
-*/
-static void getSection(Elf64_Shdr *result, Elf64_Off sectionHdrOff, Elf64_Half sectionHdrSize){
-  if (fseek(file, sectionHdrOff, SEEK_SET) != 0){
-    perror("error.");
-    err("Error in fseek at showSection");
-    return 1;
-  }
 
-  if(!is64BitElf){
-    //32 bits
-    Elf32_Shdr elf32_Shdr_tmp;
-    if (fread(&elf32_Ehdr_tmp, 1, sectionHdrSize, file) != sectionHdrSize){
-      err("Couldnt read section header, the file spesification. in getSection at offset and size");
-      return 2;
-  }else{
-    //64 bits
-  }
-}
-
-/**
- * Prints the section at sectionHdrOff of size sectionHdrSize info into stdout.
- * 
- * @param sectionHdrOff,  section header offset in the file.
- * @param sectionHdrSize, section header size in the file.
-*/
-static void showSection(Elf64_Off sectionHdrOff, Elf64_Half sectionHdrSize){
-  Elf64_Shdr section;
-  getSection(&section, sectionHdrOff, sectionHdrSize);
-}
 
 
 /**
@@ -460,49 +524,43 @@ void showScanSections(void){
   //for test assumming not many sections.
   Elf64_Half numOfSections =  elf_Ehdr.e_shnum; //NOT ALWAYS!!!! TODO ADD TO ALWAYS
 
-  Elf64_Half sectionHeaderSize = elf_Ehdr.e_shentsize;
+  // btw Elf64_Half sectionHeaderSize = elf_Ehdr.e_shentsize;
 
+
+  
+
+  //end check.
+
+  
   for(int sectionCnt=0; sectionCnt < numOfSections; sectionCnt++){
-    PrintSection(curSectionFileOffset, sectionHeaderSize);
+    showSection(curSectionFileOffset);
 
     //can maybe check here for integer overflow
-    curSectionFileOffset += sectionHeaderSize;
+    curSectionFileOffset += elf_Ehdr.e_shentsize;
   }
-
-  printf("location: %ld\n", location);
-
-  //Elf64_Off is uint64_t, but fseek is getting long	
-  //if (fseek(file, location, SEEK_SET))
-  
-  /*
-    if (fseek(file, 0, SEEK_SET) != 0){
-    perror("error.");
-    err("Error in fseek at setupBits");
-    return 1;
-  }
-  unsigned char e_ident[EI_NIDENT];
-  if (fread(e_ident, sizeof(char), EI_NIDENT, file) != EI_NIDENT){
-    err("Couldnt read indent, the file spesification. in setupBits");
-    return 2;
-  }
-  */
- //TODO: CHANGE TO open64, lseek64
-
-
 }
 
 
 /**
  * Cleans all the stuff created in here that needs to be cleaned (freed)
+ * 
+ * @return 0 if sucess, else something else.
 */
-void cleanElfUtils(void){
+int cleanElfUtils(void){
   
   if(file){
-    fclose(file);
+    if (fclose(file) != 0){
+      err("Error in cleanElfUtils, while tring to fclose file.\n");
+      return 1;
+    }
     file = NULL;
   }
 
-  //there is no need to clean that but I am cleaning it, just in case.
-  elf_Ehdr = {0};
+  if(stringTable.data){
+    free(stringTable.data);
+    stringTable.data = NULL;
+  }
 
+  //there is no need to clean stuff, I won't use them.
+  return 0;
 }
