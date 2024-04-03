@@ -111,13 +111,15 @@ typedef struct
 #endif
 
 
+/*
+  note that can save all/most these globals into a struct and in memory (passing a pointer),
+  but I have only one instance of this so there is no need,
+  in my opinion it will be more readable like what it is now.
+*/
+
+
 //to know if to use elf64_hdr or elf32_hdr and such..
 bool is64BitElf;
-
-/*static union{
-    Elf64_Ehdr elf64;
-    Elf32_Ehdr elf32;
-} elf_Ehdr;*/
 
 //this saves both 32 and 64 elf headers.
 static Elf64_Ehdr elf_Ehdr;
@@ -146,8 +148,6 @@ static void copyElf32_EhdrToElf64_Ehdr(Elf32_Ehdr *elf32_Ehdr_p, Elf64_Ehdr *elf
   elf64_Ehdr_p->e_shentsize = elf32_Ehdr_p->e_shentsize;
   elf64_Ehdr_p->e_shnum = elf32_Ehdr_p->e_shnum;
   elf64_Ehdr_p->e_shstrndx = elf32_Ehdr_p->e_shstrndx;
-
-
 }
 
 
@@ -169,6 +169,8 @@ static int setupElf_ehdr(void){
       err("Couldnt read elf header, the file spesification. in setupElf_ehdr");
       return 2;
     }
+    //TODO: fix endian here if needed.
+
     copyElf32_EhdrToElf64_Ehdr(&elf32_Ehdr_tmp, &elf_Ehdr);
   }
   else {
@@ -176,6 +178,7 @@ static int setupElf_ehdr(void){
       err("Couldnt read elf header, the file spesification. in setupElf_ehdr");
       return 2;
     }
+    //TODO: fix endian here if needed.
   }
   
   return 0;
@@ -252,6 +255,8 @@ int initElfUtils(char const *filename, unsigned long long entryP){
     return 3;
   }
 
+  //can add a check to see if elf header size is e_ehsize.
+
   //maybe I should do something with the EI_DATA?
 
   if (entryP != ULLONG_MAX){
@@ -323,7 +328,7 @@ const char* getArch(void){
  * 
  * @note: FOR NOW I DON'T SUPPORT OTHER ENDIANESS (ONLY FOR COMPILER COMPUTER ENDIANNESS)
 */
-int getEndiannessEncoding(){
+static int getEndiannessEncoding(void){
   //can read everything with the endianess thing.
 
   char encodingByte = elf_Ehdr.e_ident[EI_DATA];
@@ -352,18 +357,92 @@ unsigned long long getEntryPoint(void){
 }
 
 /**
- *
+ * Gets the section name from String table using Elf32_Shdr.sh_name
+ * 
+ * @return section name.
+ * 
+ * @note in the string table the sh_name needs to end with \0 (room for vulnerability btw)
+*/
+static const char* getSectionName(Elf64_Word sh_name){
+  //TODO fix endianess if I want
+  //elf_Ehdr.e_shstrndx
+  
+  /*if (fseek(file, sh_name + elf_Ehdr.e_shstrndx, SEEK_SET) != 0){
+    perror("error.");
+    err("Error in fseek at setupElf_ehdr");
+    return 1;
+  }
+
+  if(!is64BitElf){
+    Elf32_Ehdr elf32_Ehdr_tmp;
+    if (fread(&elf32_Ehdr_tmp, 1, sizeof(Elf32_Ehdr), file) != sizeof(Elf32_Ehdr)){
+      err("Couldnt read elf header, the file spesification. in setupElf_ehdr");
+      return 2;
+  }*/
+
+  //TODO CONTINUE
+
+}
+
+
+/**
+ * Gets the section at sectionHdrOff of size sectionHdrSize, into result.
+ * 
+ * 
+ * @param sectionHdrOff,  section header offset in the file.
+ * @param sectionHdrSize, section header size in the file.
+ * 
+ * @note if 32 bits will make it fit to the 64 one, assuming result is already allocated space.
+*/
+static void getSection(Elf64_Shdr *result, Elf64_Off sectionHdrOff, Elf64_Half sectionHdrSize){
+  if (fseek(file, sectionHdrOff, SEEK_SET) != 0){
+    perror("error.");
+    err("Error in fseek at showSection");
+    return 1;
+  }
+
+  if(!is64BitElf){
+    //32 bits
+    Elf32_Shdr elf32_Shdr_tmp;
+    if (fread(&elf32_Ehdr_tmp, 1, sectionHdrSize, file) != sectionHdrSize){
+      err("Couldnt read section header, the file spesification. in getSection at offset and size");
+      return 2;
+  }else{
+    //64 bits
+  }
+}
+
+/**
+ * Prints the section at sectionHdrOff of size sectionHdrSize info into stdout.
+ * 
+ * @param sectionHdrOff,  section header offset in the file.
+ * @param sectionHdrSize, section header size in the file.
+*/
+static void showSection(Elf64_Off sectionHdrOff, Elf64_Half sectionHdrSize){
+  Elf64_Shdr section;
+  getSection(&section, sectionHdrOff, sectionHdrSize);
+}
+
+
+/**
+ * Shows all the sections and thier premissions.
  * 
  * @note making this more for me to understand how it works. 
+ * 
+ * Imporatnt for this, I set _FILE_OFFSET_BITS=64 before so fseek would be fseek64(and fopen, fopen64..)
 */
 void showScanSections(void){
-  //start scanning from elf.?.e_shoff
-
+  //start scanning from elf_Ehdr.e_shoff
+  
 
   //inside the elf header:
   //  e_shoff member gives the byte offset from the beginning of the file to the section header table;
-  //  e_shnum tells how many entries the section header table contains
+  //  e_shnum tells how many entries the section header table contains. (NOT ALWAYS, LOOK AT NOTES)
   //  e_shentsize gives the size in bytes of each entry.
+
+
+  // to show the name of the section:
+  //  e_shstrndx 
 
   //NOTE: If the number of sections is greater than or equal to SHN_LORESERVE (0xff00), e_shnum has the value SHN_UNDEF (0) and the actual number of section header table entries is contained in the sh_size field of the section header at index 0. Otherwise, the sh_size member of the initial entry contains 0.
 
@@ -376,7 +455,19 @@ void showScanSections(void){
   //I will start by writing the 32 bit version and then I will divide it.
 
   //I can make this a long long
-  Elf64_Off location = elf_Ehdr.e_shoff;
+  Elf64_Off curSectionFileOffset = elf_Ehdr.e_shoff;
+
+  //for test assumming not many sections.
+  Elf64_Half numOfSections =  elf_Ehdr.e_shnum; //NOT ALWAYS!!!! TODO ADD TO ALWAYS
+
+  Elf64_Half sectionHeaderSize = elf_Ehdr.e_shentsize;
+
+  for(int sectionCnt=0; sectionCnt < numOfSections; sectionCnt++){
+    PrintSection(curSectionFileOffset, sectionHeaderSize);
+
+    //can maybe check here for integer overflow
+    curSectionFileOffset += sectionHeaderSize;
+  }
 
   printf("location: %ld\n", location);
 
@@ -410,5 +501,8 @@ void cleanElfUtils(void){
     fclose(file);
     file = NULL;
   }
+
+  //there is no need to clean that but I am cleaning it, just in case.
+  elf_Ehdr = {0};
 
 }

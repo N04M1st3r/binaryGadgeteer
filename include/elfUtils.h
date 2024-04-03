@@ -7,4 +7,7 @@ int initElfUtils(char const *filename, unsigned long long entryP);
 void cleanElfUtils(void);
 
 const char* getArch(void);
+
 unsigned long long getEntryPoint(void);
+
+
