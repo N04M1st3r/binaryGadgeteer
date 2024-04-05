@@ -21,7 +21,7 @@ static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *, Elf64_Shdr *);
 static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *, Elf64_Shdr *);
 static int setupElf_ehdr(void);
 static int setupBits(void);
-static const char* getSectionName(Elf64_Word sh_name);
+static const char* getSectionName(Elf64_Shdr *sectionP);
 static int initStringTable(void);
 static int getSectionHdrByOffset(Elf64_Shdr *result_Shdr, Elf64_Off sectionHdrOff);
 static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_index);
@@ -61,6 +61,12 @@ static struct{
   char *data;
 } stringTable = {.data = NULL};
 
+typedef struct mini_ELF64_Shdr{
+  char *header_name;    //pointer to header name
+  uint64_t addr;        //virtual addr in the executable.
+  uint64_t file_offset; //location in the file where the amount is.
+  uint64_t size;        //size.
+} mini_ELF64_Shdr;
 
 //maybe save the String Table here.
 //costum struct for "String table", it is pretty naive but I will just 
@@ -190,41 +196,18 @@ static int setupBits(void){
 /**
  * Gets the section name from String table using Elf32_Shdr.sh_name
  * 
- * @return section name.
+ * @param sectionP, section header pointer.
  * 
- * @note in the string table the sh_name needs to end with \0 (room for vulnerability btw)
+ * @return section name (pointer).
+ * 
+ * @note in the string table the section name needs to end with \0 (room for vulnerability btw)
 */
-static const char* getSectionName(Elf64_Word sh_name){
-  //bullshit:
-  SUPPRESS_WARNING(sh_name);
-  
-  
-
-  //end bullshit
-
-  //TODO fix endianess if I want
-  //elf_Ehdr.e_shstrndx
-  
-  /*if (fseek(file, sh_name + elf_Ehdr.e_shstrndx, SEEK_SET) != 0){
-    perror("error.");
-    err("Error in fseek at setupElf_ehdr");
-    return 1;
-  }
-
-  if(!is64BitElf){
-    Elf32_Ehdr elf32_Ehdr_tmp;
-    if (fread(&elf32_Ehdr_tmp, 1, sizeof(Elf32_Ehdr), file) != sizeof(Elf32_Ehdr)){
-      err("Couldnt read elf header, the file spesification. in setupElf_ehdr");
-      return 2;
-  }*/
-
-  //TODO CONTINUE
-  return 0;
+static const char* getSectionName(Elf64_Shdr *sectionP){
+  return stringTable.data + sectionP->sh_name;
 }
 
 static void FIX_UNUSED_DEL(void){
   //DEL LATER!
-  getSectionName((Elf64_Word)2);
   getEndiannessEncoding();
   
 }
@@ -341,18 +324,70 @@ static void showSection(Elf64_Off sectionHdrOff){
     return;
   }
 
-  uint64_t address = elf_Ehdr.e_shstrndx;
-  address += section.sh_name;
+  if(!(section.sh_flags & SHF_EXECINSTR))
+    return;
 
-  printf("location: 0x%" PRIx64 "\n", address);
-  printf("%s  ", stringTable.data + section.sh_name);
+  //uint64_t address = elf_Ehdr.e_shstrndx;
+  //address += section.sh_name;
+  //printf("location: 0x%" PRIx64 "\n", address);
+  printf("virtual addr: 0x%" PRIx64 "\n", section.sh_addr);
+  printf("name: %s\n", getSectionName(&section));
+  printf("file offset: 0x%" PRIx64 "\n", section.sh_offset);
+  printf("size: 0x%" PRIx64 "\n", section.sh_size);
+  printf("link: 0x%" PRIx32 "\n", section.sh_link);
 
+  printf("info: 0x%" PRIx32 "\n", section.sh_info);
+  printf("addralign: 0x%" PRIx64 "\n", section.sh_addralign);
+  printf("entsize: 0x%" PRIx64 "\n", section.sh_entsize);
+
+  printf("type: 0x%" PRIx32 "\n", section.sh_type);
+
+
+
+  printf("flags:");
   //sh_flags
-  if ( (section.sh_flags & SHF_EXECINSTR) ){
-    printf("Executable");
-  }
-  printf("\n\n\n\n");
+  if ( section.sh_flags & SHF_EXECINSTR )
+    printf("   Executable");
 
+  if ( section.sh_flags & SHF_WRITE)
+    printf("   Writable");
+
+  if ( section.sh_flags & SHF_ALLOC)
+    printf("   Allocatable");
+  
+  if ( section.sh_flags & SHF_MERGE)
+    printf("   Merge");
+
+  if ( section.sh_flags & SHF_STRINGS)
+    printf("   SHF_STRINGS");
+  
+  if ( section.sh_flags & SHF_LINK_ORDER)
+    printf("   SHF_LINK_ORDER");
+  
+  if ( section.sh_flags & SHF_OS_NONCONFORMING)
+    printf("   SHF_OS_NONCONFORMING(WTF HOW)");
+
+  if ( section.sh_flags & SHF_GROUP)
+    printf("   GROUP(wow)");
+  
+  if ( section.sh_flags & SHF_TLS)
+    printf("   SHF_TLS(WTF)");
+
+
+  if ( section.sh_flags & SHF_MASKOS)
+    printf("   MASKOS(WHAT?)");
+  
+  if ( section.sh_flags & SHF_ORDERED)
+    printf("   ORDERED(WHAT?)");
+  
+  if ( section.sh_flags & SHF_EXCLUDE)
+    printf("   EXCLUDE(!!)");
+  
+  if ( section.sh_flags & SHF_MASKPROC)
+    printf("   MASKPROC(WTF)");
+
+
+  printf("\n\n");
 }
 
 /**
@@ -515,36 +550,95 @@ void showScanSections(void){
   // to show the name of the section:
   //  e_shstrndx 
 
-  //NOTE: If the number of sections is greater than or equal to SHN_LORESERVE (0xff00), e_shnum has the value SHN_UNDEF (0) and the actual number of section header table entries is contained in the sh_size field of the section header at index 0. Otherwise, the sh_size member of the initial entry contains 0.
-
-  //WTF: Some section header table indexes are reserved in contexts where index size is restricted. For example, the st_shndx member of a symbol table entry and the e_shnum and e_shstrndx members of the ELF header. In such contexts, the reserved values do not represent actual sections in the object file. Also in such contexts, an escape value indicates that the actual section index is to be found elsewhere, in a larger field.
 
   //Although index 0 is reserved as the undefined value, the section header table contains an entry for index 0. That is, if the e_shnum member of the ELF header says a file has 6 entries in the section header table, they have the indexes 0 through 5. The contents of the initial entry are specified later in this section.
   
-  //so always the initial(0th) entry will not be a section (I think)
-  
-  //I will start by writing the 32 bit version and then I will divide it.
-
-  //I can make this a long long
   Elf64_Off curSectionFileOffset = elf_Ehdr.e_shoff;
-
-  //for test assumming not many sections.
-  Elf64_Half numOfSections =  elf_Ehdr.e_shnum; //NOT ALWAYS!!!! TODO ADD TO ALWAYS
-
-  // btw Elf64_Half sectionHeaderSize = elf_Ehdr.e_shentsize;
-
-
   
 
-  //end check.
+  //not Elf64_Half because it can be bigger.
+  Elf64_Xword numOfSections =  elf_Ehdr.e_shnum;
 
-  
-  for(int sectionCnt=0; sectionCnt < numOfSections; sectionCnt++){
+  //If the number of sections is greater than or equal to SHN_LORESERVE (0xff00), e_shnum has the value SHN_UNDEF (0) and the actual number of section header table entries is contained in the sh_size field of the section header at index 0. Otherwise, the sh_size member of the initial entry contains 0.
+  if (numOfSections == SHN_UNDEF){
+    //the first section has the size.
+    //(did not check, cant find an elf to check that with and don't have the time)
+    Elf64_Shdr section;
+    if(getSectionHdrByOffset(&section, curSectionFileOffset)){
+      //or maybe not except? idk. not important for my project, maybe I will add later.
+      err("Error in getSectionHdrByOffset at showScanSections, getting the first(0th) section. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", curSectionFileOffset, elf_Ehdr.e_shentsize);
+      return;
+    }
+    numOfSections = section.sh_size;
+    if(numOfSections == 0){
+      printf("No sections (except the 0th one that says there are none)\n");
+      return;
+    }
+  }
+
+  for(Elf64_Xword sectionCnt=0; sectionCnt < numOfSections; sectionCnt++){
     showSection(curSectionFileOffset);
 
     //can maybe check here for integer overflow
     curSectionFileOffset += elf_Ehdr.e_shentsize;
   }
+}
+
+/**
+ * Reads amount bytes to data from the executable sections in the order needed.
+ * 
+ * 
+ * @return an allocated array
+ * 
+ * @note the array is allocated, you need to free it and everything in it!
+ * @note call free_miniElf64_ShdrP, which will free the array and everything in it.
+ * 
+ * @note TODO do something for the end of the array
+*/
+//TODO: DO IT!
+mini_ELF64_Shdr* getAllExec_mini_Shdr(){
+  return NULL;
+  /*
+  I want to somehow do that:
+    get X bytes from entry point.
+  
+  I can maybe get section section and do for each one of them in a different function.
+  problems: what if sections collide.
+  solution for problem: check for section collision (one start is at ones end).
+  and consider them as one section.
+
+  do like a "merge".
+
+  so what to do:
+  1) Make a function to get all the executable section headers and put them into a structure.
+    (save the [header's name], [virtual addr], [file offset], [size])
+    (ingoring sh_addralign, assuming the virtual addr is already aligned)
+    
+
+  2) Make a function to sort the headers by the virtual addr
+  3) MAYBE, IDK: Make a function to merge the headers that are near eachother.
+  
+  4) write a function that does:
+    general: go through each section and get the contents and so on..
+
+    starting from the first section and going until the last section, call my call.
+    (not in this func)
+
+    when reaching the end of a section:
+      lets say section A
+      we see its distance from the next section, section B
+      if the distance is more than max operand size (15 - ZYDIS_MAX_INSTRUCTION_LENGTH):
+        then give section A plus some of section B. (pad with 0s in the middle)
+        else give section A plus some 0s.
+    
+    when in the start of a section:
+      if the distance from the prev section is more than max operand size (15 - ZYDIS_MAX_INSTRUCTION_LENGTH):
+        then give some of section B plus what is needed from section A. (pad with 0s in the middle)
+        else give some 0s and add what is needed from section A.
+    
+    
+
+  */
 }
 
 
