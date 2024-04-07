@@ -121,7 +121,6 @@ static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *elf32_Shdr_p, Elf64_Shdr *elf
 */
 static int setupElf_ehdr(void){
   if (fseek(file, 0, SEEK_SET) != 0){
-    perror("error.");
     err("Error in fseek at setupElf_ehdr");
     return 1;
   }
@@ -154,13 +153,12 @@ static int setupElf_ehdr(void){
 */
 static int setupBits(void){
   if (fseek(file, 0, SEEK_SET) != 0){
-    perror("error.");
     err("Error in fseek at setupBits");
     return 1;
   }
   unsigned char e_ident[EI_NIDENT];
   if (fread(e_ident, sizeof(char), EI_NIDENT, file) != EI_NIDENT){
-    err("Couldnt read indent, the file spesification. in setupBits");
+    err("Couldnt read indent, in setupBits at fread.");
     return 2;
   }
 
@@ -170,7 +168,6 @@ static int setupBits(void){
     err("File is not ELF. Error in setupBits");
     return 3;
   }
-
   switch(e_ident[EI_CLASS]){
     case ELFCLASS32:
       is64BitElf = false;
@@ -228,13 +225,11 @@ static int initStringTable(void){
   stringTable.data = malloc(stringTable.Shdr.sh_size);
   if(stringTable.data == NULL){
     // Malloc failed
-    perror("Malloc failed :()\n");
     err("Malloc for stringTable.data failed inside initStringTable.\n");
     return 2;
   }
   
   if (fseek(file, stringTable.Shdr.sh_offset, SEEK_SET)){
-    perror("error.\n");
     err("Error in fseek at InitStringTable, seeking to 0x%" PRIx64 "\n", stringTable.Shdr.sh_offset);
     return 3;
   }
@@ -260,7 +255,6 @@ static int initStringTable(void){
 */
 static int getSectionHdrByOffset(Elf64_Shdr *result_Shdr, Elf64_Off sectionHdrOff){
   if (fseek(file, sectionHdrOff, SEEK_SET) != 0){
-    perror("error.");
     err("Error in fseek at getSectionHdrByOffset");
     return 1;
   }
@@ -342,6 +336,28 @@ static void showSection(Elf64_Off sectionHdrOff){
 
   printf("type: 0x%" PRIx32 "\n", section.sh_type);
 
+  #if 0
+  if(!strcmp(getSectionName(&section), ".init")){
+    //for checks.
+    fseek(file, section.sh_offset, SEEK_SET); //not doing checks because I will del it later.
+    for(uint64_t i=0; i <= 0x1a; i++){
+      printf("in file at 0x%" PRIx64 ", 0x%" PRIx64 ": 0x%" PRIx8 "\n",section.sh_offset+i, section.sh_addr+i , fgetc(file));
+    }
+
+
+    //just for check: //TODO DEL THIS LATER!
+    //char str[] = "KA";
+    //fwrite(str, 1, sizeof(str), file);
+
+
+    printf("written\n");
+    fseek(file, section.sh_offset, SEEK_SET); //not doing checks because I will del it later.
+    for(uint64_t i=0; i <= 0x20; i++){
+      printf("in file at 0x%" PRIx64 ", 0x%" PRIx64 ": 0x%" PRIx8 "\n",section.sh_offset+i, section.sh_addr+i , fgetc(file));
+    }
+  }
+  #endif
+
 
 
   printf("flags:");
@@ -400,8 +416,8 @@ static void showSection(Elf64_Off sectionHdrOff){
  * @return sucess, 0 if no errors, another if there were errors.
 */
 int initElfUtils(char const *filename, unsigned long long entryP){
-  if ((file = fopen(filename, "r")) == NULL){
-    perror("Error opening the file.");
+  if ((file = fopen(filename, "rb")) == NULL){ //TODO CHANGE TO rb FROM rb+!!!!!
+    err("Error opening the file in initElfUtils");
     return 1;
   }
 
@@ -536,10 +552,68 @@ unsigned long long getEntryPoint(void){
  * @note making this more for me to understand how it works. 
  * 
  * Imporatnt for this, I set _FILE_OFFSET_BITS=64 before so fseek would be fseek64(and fopen, fopen64..)
+ * 
+ * $ readelf -S prog
 */
 void showScanSections(void){
   //start scanning from elf_Ehdr.e_shoff
   
+
+  //inside the elf header:
+  //  e_shoff member gives the byte offset from the beginning of the file to the section header table;
+  //  e_shnum tells how many entries the section header table contains. (NOT ALWAYS, LOOK AT NOTES)
+  //  e_shentsize gives the size in bytes of each entry.
+
+
+  // to show the name of the section:
+  //  e_shstrndx 
+
+
+  //Although index 0 is reserved as the undefined value, the section header table contains an entry for index 0. That is, if the e_shnum member of the ELF header says a file has 6 entries in the section header table, they have the indexes 0 through 5. The contents of the initial entry are specified later in this section.
+  
+  Elf64_Off curSectionFileOffset = elf_Ehdr.e_shoff;
+  
+
+  //not Elf64_Half because it can be bigger.
+  Elf64_Xword numOfSections =  elf_Ehdr.e_shnum;
+
+  //If the number of sections is greater than or equal to SHN_LORESERVE (0xff00), e_shnum has the value SHN_UNDEF (0) and the actual number of section header table entries is contained in the sh_size field of the section header at index 0. Otherwise, the sh_size member of the initial entry contains 0.
+  if (numOfSections == SHN_UNDEF){
+    //the first section has the size.
+    //(did not check, cant find an elf to check that with and don't have the time)
+    Elf64_Shdr section;
+    if(getSectionHdrByOffset(&section, curSectionFileOffset)){
+      //or maybe not except? idk. not important for my project, maybe I will add later.
+      err("Error in getSectionHdrByOffset at showScanSections, getting the first(0th) section. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", curSectionFileOffset, elf_Ehdr.e_shentsize);
+      return;
+    }
+    numOfSections = section.sh_size;
+    if(numOfSections == 0){
+      printf("No sections (except the 0th one that says there are none)\n");
+      return;
+    }
+  }
+
+  for(Elf64_Xword sectionCnt=0; sectionCnt < numOfSections; sectionCnt++){
+    showSection(curSectionFileOffset);
+
+    //can maybe check here for integer overflow
+    curSectionFileOffset += elf_Ehdr.e_shentsize;
+  }
+}
+
+
+/**
+ * Shows all the program headers and thier premissions.
+ * 
+ * @note making this more for me to understand how it works. 
+ * 
+ * $ readelf -l prog
+*/
+void showProgramHeaders(void){
+  //start scanning from elf_Ehdr.e_shoff
+  //this is describing segments (not sections).
+  //note that A segment can contain 0 or more sections.
 
   //inside the elf header:
   //  e_shoff member gives the byte offset from the beginning of the file to the section header table;
@@ -597,6 +671,12 @@ void showScanSections(void){
 */
 //TODO: DO IT!
 mini_ELF64_Shdr* getAllExec_mini_Shdr(){
+  
+  
+
+
+
+
   return NULL;
   /*
   I want to somehow do that:
@@ -607,7 +687,7 @@ mini_ELF64_Shdr* getAllExec_mini_Shdr(){
   solution for problem: check for section collision (one start is at ones end).
   and consider them as one section.
 
-  do like a "merge".
+  
 
   so what to do:
   1) Make a function to get all the executable section headers and put them into a structure.
@@ -638,6 +718,25 @@ mini_ELF64_Shdr* getAllExec_mini_Shdr(){
     
     
 
+  or idea 2:
+  kinda virtual address.
+  I will create a function where you need to tell what location you want.
+  (I will get the start location from the first section)
+
+
+
+
+  BTWWWWWW:
+    can maybe:
+    Implement 2 ways. one in which I am doing this throughout the sections (faster)
+    and one which I am doing throught the.
+
+    just figured out a problem with going through the sections, I got to go through the segments.
+    there might not be sections for some executable code :(
+    which is sad but nah it will be okay, if I have time I will implement a way to do them both on choice.
+
+    now before I will merge those who need merging (although I doubt there will be any that need merge)
+    I will start from just getting it and not merging cause I don't have time.
   */
 }
 
