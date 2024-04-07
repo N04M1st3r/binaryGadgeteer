@@ -62,7 +62,7 @@ static void parseOptionAddress(char const *address_s){
         base_address_number = strtoull(address_s, &endptr, 10);
 
     if(errno != 0){
-        perror("strtoull.");
+        err("strtoull error inside parseOptionAddress");
         exit(EXIT_FAILURE);
     }
     
@@ -117,7 +117,6 @@ static void readOptions(int argc, char **argv){
     }
 
     filename = argv[optind];
-
 }
 
 
@@ -130,11 +129,13 @@ int main(int argc, char *argv[])
     readOptions(argc, argv);
 
     printf("starting\n");
-    int a = initElfUtils("./checkMe", -1);
+    if(initElfUtils("./checkMe", -1)){
+        err("error inside initElfUtils at main.");
+        return 1;
+    }
     unsigned long long entry = getEntryPoint();
     printf("hello %llx \n", entry);
 
-    printf("%d\n", a);
     entry = getEntryPoint();
     printf("hello %llx \n", entry);
     printf("%s\n", getArch());
