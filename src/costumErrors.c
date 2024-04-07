@@ -4,7 +4,8 @@
 int err(char const *fmt, ...){
     va_list args;
 
-    fprintf(stderr, "Error!");
+    perror("error!"); //can also strerror(errno)
+    //fprintf(stderr, "Error!");
     if(fmt){
         va_start(args, fmt);
         vfprintf(stderr, fmt, args);
