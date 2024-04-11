@@ -476,7 +476,7 @@ const char* getArch(void){
     case EM_NONE:
       return "None";
   }
-  printf("aaa: %x\n", machine);
+  printf("unknown: %x\n", machine);
 
   return "Unknown";
 }
