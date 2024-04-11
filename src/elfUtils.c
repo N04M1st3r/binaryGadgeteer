@@ -22,6 +22,7 @@ static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *, Elf64_Shdr *);
 static int setupElf_ehdr(void);
 static int setupBits(void);
 static const char* getSectionName(Elf64_Shdr *sectionP);
+static void showSectionFlags(Elf64_Shdr *sectionP);
 static int initStringTable(void);
 static int getSectionHdrByOffset(Elf64_Shdr *result_Shdr, Elf64_Off sectionHdrOff);
 static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_index);
@@ -336,75 +337,64 @@ static void showSection(Elf64_Off sectionHdrOff){
 
   printf("type: 0x%" PRIx32 "\n", section.sh_type);
 
-  #if 0
-  if(!strcmp(getSectionName(&section), ".init")){
-    //for checks.
-    fseek(file, section.sh_offset, SEEK_SET); //not doing checks because I will del it later.
-    for(uint64_t i=0; i <= 0x1a; i++){
-      printf("in file at 0x%" PRIx64 ", 0x%" PRIx64 ": 0x%" PRIx8 "\n",section.sh_offset+i, section.sh_addr+i , fgetc(file));
-    }
 
+  showSectionFlags(&section);
 
-    //just for check: //TODO DEL THIS LATER!
-    //char str[] = "KA";
-    //fwrite(str, 1, sizeof(str), file);
+  printf("\n");
+}
 
-
-    printf("written\n");
-    fseek(file, section.sh_offset, SEEK_SET); //not doing checks because I will del it later.
-    for(uint64_t i=0; i <= 0x20; i++){
-      printf("in file at 0x%" PRIx64 ", 0x%" PRIx64 ": 0x%" PRIx8 "\n",section.sh_offset+i, section.sh_addr+i , fgetc(file));
-    }
-  }
-  #endif
-
-
-
+/**
+ * Prints the section header's flags in a nice way.
+ * 
+ * @param sectionP, the section's pointer.
+ * 
+*/
+static void showSectionFlags(Elf64_Shdr *sectionP){
   printf("flags:");
+
   //sh_flags
-  if ( section.sh_flags & SHF_EXECINSTR )
+  if ( sectionP->sh_flags & SHF_EXECINSTR )
     printf("   Executable");
 
-  if ( section.sh_flags & SHF_WRITE)
+  if ( sectionP->sh_flags & SHF_WRITE)
     printf("   Writable");
 
-  if ( section.sh_flags & SHF_ALLOC)
+  if ( sectionP->sh_flags & SHF_ALLOC)
     printf("   Allocatable");
   
-  if ( section.sh_flags & SHF_MERGE)
+  if ( sectionP->sh_flags & SHF_MERGE)
     printf("   Merge");
 
-  if ( section.sh_flags & SHF_STRINGS)
+  if ( sectionP->sh_flags & SHF_STRINGS)
     printf("   SHF_STRINGS");
   
-  if ( section.sh_flags & SHF_LINK_ORDER)
+  if ( sectionP->sh_flags & SHF_LINK_ORDER)
     printf("   SHF_LINK_ORDER");
   
-  if ( section.sh_flags & SHF_OS_NONCONFORMING)
+  if ( sectionP->sh_flags & SHF_OS_NONCONFORMING)
     printf("   SHF_OS_NONCONFORMING(WTF HOW)");
 
-  if ( section.sh_flags & SHF_GROUP)
+  if ( sectionP->sh_flags & SHF_GROUP)
     printf("   GROUP(wow)");
   
-  if ( section.sh_flags & SHF_TLS)
+  if ( sectionP->sh_flags & SHF_TLS)
     printf("   SHF_TLS(WTF)");
 
-
-  if ( section.sh_flags & SHF_MASKOS)
+  if ( sectionP->sh_flags & SHF_MASKOS)
     printf("   MASKOS(WHAT?)");
   
-  if ( section.sh_flags & SHF_ORDERED)
+  if ( sectionP->sh_flags & SHF_ORDERED)
     printf("   ORDERED(WHAT?)");
   
-  if ( section.sh_flags & SHF_EXCLUDE)
+  if ( sectionP->sh_flags & SHF_EXCLUDE)
     printf("   EXCLUDE(!!)");
   
-  if ( section.sh_flags & SHF_MASKPROC)
+  if ( sectionP->sh_flags & SHF_MASKPROC)
     printf("   MASKPROC(WTF)");
-
-
-  printf("\n\n");
+  
+  printf("\n");
 }
+
 
 /**
  * Initilizes the elf header into this Utils, this can work on one file at a time.
@@ -604,7 +594,7 @@ void showScanSections(void){
 
 
 /**
- * Shows all the program headers and thier premissions.
+ * Shows all the program section headers and thier premissions.
  * 
  * @note making this more for me to understand how it works. 
  * 
@@ -657,6 +647,11 @@ void showProgramHeaders(void){
     curSectionFileOffset += elf_Ehdr.e_shentsize;
   }
 }
+
+
+
+
+
 
 /**
  * Reads amount bytes to data from the executable sections in the order needed.
@@ -737,6 +732,13 @@ mini_ELF64_Shdr* getAllExec_mini_Shdr(){
 
     now before I will merge those who need merging (although I doubt there will be any that need merge)
     I will start from just getting it and not merging cause I don't have time.
+
+
+    from some research I 
+
+
+
+    just future note: remeber to look at PT_INTERP. (in general, not related to rop)
   */
 }
 
