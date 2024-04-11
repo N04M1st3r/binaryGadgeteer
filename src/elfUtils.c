@@ -26,7 +26,7 @@ static void showSectionFlags(Elf64_Shdr *sectionP);
 static int initStringTable(void);
 static int getSectionHdrByOffset(Elf64_Shdr *result_Shdr, Elf64_Off sectionHdrOff);
 static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_index);
-static void showSection(Elf64_Off sectionHdrOff);
+static void showSectionHdr(Elf64_Off sectionHdrOff);
 
 //BAD: DEL LATER XD
 #define SUPPRESS_WARNING(a) (void)a
@@ -312,10 +312,10 @@ static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_ind
  * 
  * @note if error writes there was an error, does not return anything special.
 */
-static void showSection(Elf64_Off sectionHdrOff){
+static void showSectionHdr(Elf64_Off sectionHdrOff){
   Elf64_Shdr section;
   if(getSectionHdrByOffset(&section, sectionHdrOff)){
-    err("Error in showSection in getSection. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", sectionHdrOff, elf_Ehdr.e_shentsize);
+    err("Error in showSectionHdr in getSectionHdrByOffset. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", sectionHdrOff, elf_Ehdr.e_shentsize);
     return;
   }
 
@@ -585,7 +585,7 @@ void showScanSections(void){
   }
 
   for(Elf64_Xword sectionCnt=0; sectionCnt < numOfSections; sectionCnt++){
-    showSection(curSectionFileOffset);
+    showSectionHdr(curSectionFileOffset);
 
     //can maybe check here for integer overflow
     curSectionFileOffset += elf_Ehdr.e_shentsize;
@@ -600,7 +600,7 @@ void showScanSections(void){
  * 
  * $ readelf -l prog
 */
-void showProgramHeaders(void){
+void showProgramHeaders(void){ //TODO: do this
   //start scanning from elf_Ehdr.e_shoff
   //this is describing segments (not sections).
   //note that A segment can contain 0 or more sections.
@@ -641,7 +641,7 @@ void showProgramHeaders(void){
   }
 
   for(Elf64_Xword sectionCnt=0; sectionCnt < numOfSections; sectionCnt++){
-    showSection(curSectionFileOffset);
+    showSectionHdr(curSectionFileOffset);
 
     //can maybe check here for integer overflow
     curSectionFileOffset += elf_Ehdr.e_shentsize;
