@@ -155,7 +155,20 @@ int main(int argc, char *argv[])
 
     mini_ELF_Phdr_node *cur = head;
     while(cur != NULL){
-        readFileData();
+        //until I read cur->size
+        //TODO: add some zeros to the right and left on the start (first read)
+        // (and take from last one) ZYDIS_MAX_INSTRUCTION_LENGTH
+
+        if (readFileData(cur->file_offset, 1000)){
+            err("error in readFileData at main.");
+            return;
+        }
+        char prefix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //before the offset.
+        char suffix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //after the offset
+        
+        uint64_t cur
+
+
     }
     
     
