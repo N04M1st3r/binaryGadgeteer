@@ -10,6 +10,7 @@ const char* getArch(void);
 
 unsigned long long getEntryPoint(void);
 void showScanSections(void);
+void showProgramHeaders(void);
 
 int getEndiannessEncoding(void);
 //could have used libelf but I want to create it myself.

@@ -144,7 +144,8 @@ int main(int argc, char *argv[])
     //printf("little endian(1), big(2): %d\n", getEndiannessEncoding());
 
 
-    showScanSections();
+    //showScanSections();
+    showProgramHeaders();
 
 
     if(cleanElfUtils()){

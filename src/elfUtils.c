@@ -16,17 +16,31 @@
 #include <limits.h>
 #include <inttypes.h>
 
+#define INDENT_STR "  "
+
 static void copyElf32_EhdrToElf64_Ehdr(Elf32_Ehdr *, Elf64_Ehdr *);
 static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *, Elf64_Shdr *);
-static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *, Elf64_Shdr *);
+static void copyElf32_PhdrToElf64_Phdr(Elf32_Phdr *, Elf64_Phdr *);
 static int setupElf_ehdr(void);
 static int setupBits(void);
-static const char* getSectionName(Elf64_Shdr *sectionP);
-static void showSectionFlags(Elf64_Shdr *sectionP);
 static int initStringTable(void);
+
+static const char* getSectionName(Elf64_Shdr *sectionHdrP);
+static const char* getProgramHdrType(Elf64_Phdr *programHdrP);
+
+
+static void showSectionHdrFlags(Elf64_Shdr *sectionHdrP);
+static void showProgramHdrFlags(Elf64_Phdr *programHdrP);
+
+
 static int getSectionHdrByOffset(Elf64_Shdr *result_Shdr, Elf64_Off sectionHdrOff);
-static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_index);
+static int getProgramHdrByOffset(Elf64_Phdr *result_Phdr, Elf64_Off programHdrOff);
+
 static void showSectionHdr(Elf64_Off sectionHdrOff);
+static void showProgramHdr(Elf64_Off programHdrOff);
+
+static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_index);
+
 
 //BAD: DEL LATER XD
 #define SUPPRESS_WARNING(a) (void)a
@@ -62,12 +76,19 @@ static struct{
   char *data;
 } stringTable = {.data = NULL};
 
-typedef struct mini_ELF64_Shdr{
-  char *header_name;    //pointer to header name
-  uint64_t addr;        //virtual addr in the executable.
+
+//mini program header, with only the stuff I need.
+typedef struct mini_ELF_Phdr{
+  uint64_t vaddr;        //virtual addr in the executable.
   uint64_t file_offset; //location in the file where the amount is.
   uint64_t size;        //size.
-} mini_ELF64_Shdr;
+} mini_ELF_Phdr;
+
+typedef struct mini_ELF_Phdr_node{
+  mini_ELF_Phdr cur_mini_phdr;
+  struct mini_ELF_Phdr_node* next;
+} mini_ELF_Phdr_node;
+
 
 //maybe save the String Table here.
 //costum struct for "String table", it is pretty naive but I will just 
@@ -112,6 +133,21 @@ static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *elf32_Shdr_p, Elf64_Shdr *elf
   elf64_Shdr_p->sh_info = elf32_Shdr_p->sh_info;
   elf64_Shdr_p->sh_addralign = elf32_Shdr_p->sh_addralign;
   elf64_Shdr_p->sh_entsize = elf32_Shdr_p->sh_entsize;
+}
+
+
+/**
+ * Copies all values in elf32_Phdr_p to elf64_Phdr_p.
+*/
+static void copyElf32_PhdrToElf64_Phdr(Elf32_Phdr *elf32_Phdr_p, Elf64_Phdr *elf64_Phdr_p){
+  elf64_Phdr_p->p_type   = elf32_Phdr_p->p_type;
+  elf64_Phdr_p->p_offset = elf32_Phdr_p->p_offset;
+  elf64_Phdr_p->p_vaddr = elf32_Phdr_p->p_vaddr;
+  elf64_Phdr_p->p_paddr = elf32_Phdr_p->p_paddr;
+  elf64_Phdr_p->p_filesz = elf32_Phdr_p->p_filesz;
+  elf64_Phdr_p->p_memsz = elf32_Phdr_p->p_memsz;
+  elf64_Phdr_p->p_flags = elf32_Phdr_p->p_flags;
+  elf64_Phdr_p->p_align = elf32_Phdr_p->p_align;
 }
 
 
@@ -194,14 +230,14 @@ static int setupBits(void){
 /**
  * Gets the section name from String table using Elf32_Shdr.sh_name
  * 
- * @param sectionP, section header pointer.
+ * @param sectionHdrP, section header pointer.
  * 
  * @return section name (pointer).
  * 
  * @note in the string table the section name needs to end with \0 (room for vulnerability btw)
 */
-static const char* getSectionName(Elf64_Shdr *sectionP){
-  return stringTable.data + sectionP->sh_name;
+static const char* getSectionName(Elf64_Shdr *sectionHdrP){
+  return stringTable.data + sectionHdrP->sh_name;
 }
 
 static void FIX_UNUSED_DEL(void){
@@ -264,7 +300,7 @@ static int getSectionHdrByOffset(Elf64_Shdr *result_Shdr, Elf64_Off sectionHdrOf
     //32 bits
     Elf32_Shdr elf32_Shdr_tmp;
     if (fread(&elf32_Shdr_tmp, 1, elf_Ehdr.e_shentsize, file) != elf_Ehdr.e_shentsize){
-      err("Couldnt read section header, the file spesification. in getSectionHdrByOffset at offset and size");
+      err("Couldnt read section header, the file specification. in getSectionHdrByOffset at offset 0x%" PRIx64 " and size 0x%" PRIx64, sectionHdrOff, elf_Ehdr.e_shentsize);
       return 2;
     }
 
@@ -272,13 +308,51 @@ static int getSectionHdrByOffset(Elf64_Shdr *result_Shdr, Elf64_Off sectionHdrOf
   }else{
     //64 bits
     if (fread(result_Shdr, 1, elf_Ehdr.e_shentsize, file) != elf_Ehdr.e_shentsize){
-      err("Couldnt read section header, the file spesification. in getSectionHdrByOffset at offset and size");
+      err("Couldnt read section header, the file specification. in getSectionHdrByOffset at offset 0x%" PRIx64 " and size 0x%" PRIx64, sectionHdrOff, elf_Ehdr.e_shentsize);
       return 2;
     }
   }
 
   return 0;
 }
+
+
+/**
+ * Gets the program header at file offset programHdrOff of size elf_Ehdr.e_phentsize, into result_Phdr.
+ * 
+ * @param result_Phdr, where the resulting program header will go.
+ * @param programHdrOff,  program header offset in the file.
+ * 
+ * @return 0 is sucess, anything else if error.
+ * 
+ * @note if 32 bits will make it fit to the 64 one, assuming result_Phdr is already allocated space.
+*/
+static int getProgramHdrByOffset(Elf64_Phdr *result_Phdr, Elf64_Off programHdrOff){
+  if (fseek(file, programHdrOff, SEEK_SET) != 0){
+    err("Error in fseek at getProgramHdrByOffset");
+    return 1;
+  }
+
+  if(!is64BitElf){
+    //32 bits
+    Elf32_Phdr elf32_Phdr_tmp;
+    if (fread(&elf32_Phdr_tmp, 1, elf_Ehdr.e_phentsize, file) != elf_Ehdr.e_phentsize){
+      err("Couldn't read program header, the file specification. in getProgramHdrByOffset at offset 0x%" PRIx64 " and size 0x%" PRIx64, programHdrOff, elf_Ehdr.e_phentsize);
+      return 2;
+    }
+
+    copyElf32_PhdrToElf64_Phdr(&elf32_Phdr_tmp, result_Phdr);
+  }else{
+    //64 bits
+    if (fread(result_Phdr, 1, elf_Ehdr.e_phentsize, file) != elf_Ehdr.e_phentsize){
+      err("Couldn't read program header, the file specification. in getProgramHdrByOffset at offset 0x%" PRIx64 " and size 0x%" PRIx64, programHdrOff, elf_Ehdr.e_phentsize);
+      return 2;
+    }
+  }
+
+  return 0;
+}
+
 
 /**
  * Gets the section header of the section_index'th section from the section table array 
@@ -306,7 +380,7 @@ static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_ind
 }
 
 /**
- * Prints the section at sectionHdrOff of size sectionHdrSize info into stdout.
+ * Prints the section header at sectionHdrOff of size sectionHdrSize info into stdout.
  * 
  * @param sectionHdrOff,  section header offset in the file.
  * 
@@ -338,59 +412,159 @@ static void showSectionHdr(Elf64_Off sectionHdrOff){
   printf("type: 0x%" PRIx32 "\n", section.sh_type);
 
 
-  showSectionFlags(&section);
+  showSectionHdrFlags(&section);
+
+  printf("\n");
+}
+
+
+
+/**
+ * Prints the program header's flags in a nice way.
+ * 
+ * @param programP, the program's pointer.
+ * 
+ * this like file premmision in linux,
+ * 1 for exec       (PF_X)
+ * 2 for write      (PF_W)
+ * 4 for read       (PF_R)
+ * 
+ * 0xf0000000 for Unspecified (PF_MASKPROC)
+*/
+static void showProgramHdrFlags(Elf64_Phdr *programHdrP){
+  printf("flags: ");
+
+  if (programHdrP->p_flags & PF_X)
+    printf(INDENT_STR "Executable");
+  
+  if (programHdrP->p_flags & PF_W)
+    printf(INDENT_STR "Write");
+  
+  if (programHdrP->p_flags & PF_R)
+    printf(INDENT_STR "Read");
+
+  if (programHdrP->p_flags == PF_MASKPROC)
+    printf(INDENT_STR "Unspecified");
 
   printf("\n");
 }
 
 /**
- * Prints the section header's flags in a nice way.
+ * return the program header's type in char* in a nice way.
  * 
- * @param sectionP, the section's pointer.
+ * @param programP, the program's pointer.
+ * 
+ * @return name of type of program header (char*)
  * 
 */
-static void showSectionFlags(Elf64_Shdr *sectionP){
+static const char* getProgramHdrType(Elf64_Phdr *programHdrP){
+  
+  char *typeStr;
+  switch(programHdrP->p_type){
+    case PT_NULL:
+      typeStr = "NULL";
+      break;
+    case PT_LOAD:
+      typeStr = "LOAD";
+      break;
+    case PT_DYNAMIC:
+      typeStr = "DYNAMIC";
+      break;
+    case PT_INTERP:
+      typeStr = "INTERP";
+      break;
+    case PT_NOTE:
+      typeStr = "NOTE";
+      break;
+    case PT_SHLIB:
+      typeStr = "SHLIB";
+      break;
+    case PT_PHDR:
+      typeStr = "PHDR";
+      break;
+    case PT_LOSUNW: //same as PT_SUNWBSS
+      typeStr = "LOSUNW/PT_SUNWBSS";
+      break;
+    case PT_SUNWSTACK:
+      typeStr = "SUNWSTACK";
+      break;
+    case PT_HISUNW:
+      typeStr = "HISUNW";
+      break;
+    case PT_LOPROC:
+      typeStr = "LOPROC";
+      break;
+    case PT_HIPROC:
+      typeStr = "HIPROC";
+      break;
+    case PT_GNU_PROPERTY:
+      typeStr = "GNU_PROPERTY";
+      break;
+    case PT_GNU_EH_FRAME:
+      typeStr = "GNU_EH_FRAME";
+      break;
+    case PT_GNU_RELRO:
+      typeStr = "GNU_RELRO";
+      break;
+    case PT_GNU_STACK:
+      typeStr = "GNU_STACK";
+      break;
+    default:
+      typeStr = "Unknown";
+      break;
+  }
+  return typeStr;
+}
+
+
+/**
+ * Prints the section header's flags in a nice way.
+ * 
+ * @param sectionP, the section's header pointer.
+ * 
+*/
+static void showSectionHdrFlags(Elf64_Shdr *sectionP){
   printf("flags:");
 
   //sh_flags
   if ( sectionP->sh_flags & SHF_EXECINSTR )
-    printf("   Executable");
+    printf(INDENT_STR "Executable");
 
   if ( sectionP->sh_flags & SHF_WRITE)
-    printf("   Writable");
+    printf(INDENT_STR "Writable");
 
   if ( sectionP->sh_flags & SHF_ALLOC)
-    printf("   Allocatable");
+    printf(INDENT_STR "Allocatable");
   
   if ( sectionP->sh_flags & SHF_MERGE)
-    printf("   Merge");
+    printf(INDENT_STR "Merge");
 
   if ( sectionP->sh_flags & SHF_STRINGS)
-    printf("   SHF_STRINGS");
+    printf(INDENT_STR "SHF_STRINGS");
   
   if ( sectionP->sh_flags & SHF_LINK_ORDER)
-    printf("   SHF_LINK_ORDER");
+    printf(INDENT_STR "SHF_LINK_ORDER");
   
   if ( sectionP->sh_flags & SHF_OS_NONCONFORMING)
-    printf("   SHF_OS_NONCONFORMING(WTF HOW)");
+    printf(INDENT_STR "SHF_OS_NONCONFORMING(WTF HOW)");
 
   if ( sectionP->sh_flags & SHF_GROUP)
-    printf("   GROUP(wow)");
+    printf(INDENT_STR "GROUP(wow)");
   
   if ( sectionP->sh_flags & SHF_TLS)
-    printf("   SHF_TLS(WTF)");
+    printf(INDENT_STR "SHF_TLS(WTF)");
 
   if ( sectionP->sh_flags & SHF_MASKOS)
-    printf("   MASKOS(WHAT?)");
+    printf(INDENT_STR "MASKOS(WHAT?)");
   
   if ( sectionP->sh_flags & SHF_ORDERED)
-    printf("   ORDERED(WHAT?)");
+    printf(INDENT_STR "ORDERED(WHAT?)");
   
   if ( sectionP->sh_flags & SHF_EXCLUDE)
-    printf("   EXCLUDE(!!)");
+    printf(INDENT_STR "EXCLUDE(!!)");
   
   if ( sectionP->sh_flags & SHF_MASKPROC)
-    printf("   MASKPROC(WTF)");
+    printf(INDENT_STR "MASKPROC(WTF)");
   
   printf("\n");
 }
@@ -563,6 +737,10 @@ void showScanSections(void){
   
   Elf64_Off curSectionFileOffset = elf_Ehdr.e_shoff;
   
+  if(curSectionFileOffset == 0){
+    printf("No Sections.\n");
+    return;
+  }
 
   //not Elf64_Half because it can be bigger.
   Elf64_Xword numOfSections =  elf_Ehdr.e_shnum;
@@ -601,72 +779,107 @@ void showScanSections(void){
  * $ readelf -l prog
 */
 void showProgramHeaders(void){ //TODO: do this
-  //start scanning from elf_Ehdr.e_shoff
-  //this is describing segments (not sections).
-  //note that A segment can contain 0 or more sections.
-
-  //inside the elf header:
-  //  e_shoff member gives the byte offset from the beginning of the file to the section header table;
-  //  e_shnum tells how many entries the section header table contains. (NOT ALWAYS, LOOK AT NOTES)
-  //  e_shentsize gives the size in bytes of each entry.
-
-
-  // to show the name of the section:
-  //  e_shstrndx 
-
-
-  //Although index 0 is reserved as the undefined value, the section header table contains an entry for index 0. That is, if the e_shnum member of the ELF header says a file has 6 entries in the section header table, they have the indexes 0 through 5. The contents of the initial entry are specified later in this section.
+  Elf64_Off curProgramHdrFileOffset = elf_Ehdr.e_phoff;
   
-  Elf64_Off curSectionFileOffset = elf_Ehdr.e_shoff;
-  
+  if(curProgramHdrFileOffset == 0){
+    printf("No program headers. (e_phoff is 0)\n");
+    return;
+  }
 
-  //not Elf64_Half because it can be bigger.
-  Elf64_Xword numOfSections =  elf_Ehdr.e_shnum;
+  Elf64_Xword numOfProgramHdrs =  elf_Ehdr.e_phnum;
 
-  //If the number of sections is greater than or equal to SHN_LORESERVE (0xff00), e_shnum has the value SHN_UNDEF (0) and the actual number of section header table entries is contained in the sh_size field of the section header at index 0. Otherwise, the sh_size member of the initial entry contains 0.
-  if (numOfSections == SHN_UNDEF){
-    //the first section has the size.
-    //(did not check, cant find an elf to check that with and don't have the time)
+  if (numOfProgramHdrs == 0){
+    printf("No program headers. (e_phnum is 0)");
+    return;
+  }
+
+
+  /* Special value for e_phnum.  This indicates that the real number of
+   program headers is too large to fit into e_phnum.  Instead the real
+   value is in the field sh_info of section 0.  */
+  //#define PN_XNUM		0xffff
+  if (numOfProgramHdrs == PN_XNUM){
+    //this was NEVER checked!
+    //the first (section!) has the size.
+
     Elf64_Shdr section;
-    if(getSectionHdrByOffset(&section, curSectionFileOffset)){
-      //or maybe not except? idk. not important for my project, maybe I will add later.
-      err("Error in getSectionHdrByOffset at showScanSections, getting the first(0th) section. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", curSectionFileOffset, elf_Ehdr.e_shentsize);
+    if(getSectionHdrByOffset(&section, elf_Ehdr.e_shoff)){
+      err("Error in getSectionHdrByOffset at showProgramHeaders, getting the first(0th) section. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", elf_Ehdr.e_shoff, elf_Ehdr.e_shentsize);
       return;
     }
-    numOfSections = section.sh_size;
-    if(numOfSections == 0){
-      printf("No sections (except the 0th one that says there are none)\n");
+    numOfProgramHdrs = section.sh_info;
+    if(numOfProgramHdrs == 0){
+      printf("No segments\n");
       return;
     }
   }
 
-  for(Elf64_Xword sectionCnt=0; sectionCnt < numOfSections; sectionCnt++){
-    showSectionHdr(curSectionFileOffset);
+
+  for(Elf64_Xword programHdrCnt = 0; programHdrCnt < numOfProgramHdrs; programHdrCnt++){
+    showProgramHdr(curProgramHdrFileOffset);
 
     //can maybe check here for integer overflow
-    curSectionFileOffset += elf_Ehdr.e_shentsize;
+    curProgramHdrFileOffset += elf_Ehdr.e_phentsize;
   }
+}
+
+/**
+ * Prints the program header at programHdrOff of size programHdrSize info into stdout.
+ * 
+ * @param programHdrOff,  program header offset in the file.
+ * 
+ * @note if error writes there was an error, does not return anything special.
+*/
+void showProgramHdr(Elf64_Off programHdrOff){
+  Elf64_Phdr programHdr;
+  if(getProgramHdrByOffset(&programHdr, programHdrOff)){
+    err("Error in showProgramHdr in getProgramHdrByOffset. program header offset: 0x%" PRIx64 ", program header size: 0x%" PRIx16 "\n", programHdrOff, elf_Ehdr.e_phentsize);
+    return;
+  }
+
+  //printf("type:" PRIx32 "\n", programHdr.p_type);
+  printf("type: %s\n", getProgramHdrType(&programHdr));
+
+  //printf("flags: " PRIx32 "\n", programHdr.p_flags);
+  showProgramHdrFlags(&programHdr);
+
+  printf("offset: 0x%" PRIx64 "\n" , programHdr.p_offset);
+
+  printf("vaddr: 0x%" PRIx64 "\n", programHdr.p_vaddr);
+  printf("paddr: 0x%" PRIx64 "\n", programHdr.p_paddr);
+
+  printf("filesz: 0x%" PRIx64 "\n", programHdr.p_filesz);
+  printf("memsize: 0x%" PRIx64 "\n", programHdr.p_memsz);
+  printf("align: 0x%" PRIx64 "\n", programHdr.p_align);
+
+  printf("\n");
 }
 
 
 
 
-
+/**
+ * Frees the mini_Phdr_arr array and the mini_ELF_Phdr* in it.
+*/
+void freeAll_mini_Shdr(mini_ELF_Phdr* mini_Phdr_arr){
+  //UNUSED(mini_Phdr_arr);
+}
 
 /**
- * Reads amount bytes to data from the executable sections in the order needed.
+ * Retruns an allocated array of the executable program headers.
  * 
- * 
- * @return an allocated array
+ * @return an allocated array of mini_ELF_Phdr* of type mini_ELF_Phdr** and size 
  * 
  * @note the array is allocated, you need to free it and everything in it!
  * @note call free_miniElf64_ShdrP, which will free the array and everything in it.
  * 
  * @note TODO do something for the end of the array
+ * 
+ * @note CALL freeAll_mini_Shdr after done using the array.
 */
 //TODO: DO IT!
-mini_ELF64_Shdr* getAllExec_mini_Shdr(){
-  
+mini_ELF_Phdr** getAllExec_mini_Phdr(){
+  //malloc(elf_Ehdr.)
   
 
 
@@ -732,9 +945,6 @@ mini_ELF64_Shdr* getAllExec_mini_Shdr(){
 
     now before I will merge those who need merging (although I doubt there will be any that need merge)
     I will start from just getting it and not merging cause I don't have time.
-
-
-    from some research I 
 
 
 
