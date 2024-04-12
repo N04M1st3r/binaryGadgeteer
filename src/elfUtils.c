@@ -484,12 +484,12 @@ static const char* getProgramHdrType(Elf64_Phdr *programHdrP){
     case PT_HISUNW:
       typeStr = "HISUNW";
       break;
-    case PT_LOPROC:
+    case PT_LOPROC: // values from PT_LOPROC to PT_HIPROC are processor-specific semantics
       typeStr = "LOPROC";
       break;
     case PT_HIPROC:
       typeStr = "HIPROC";
-      break;
+      break; //from here some processor-specific
     case PT_GNU_PROPERTY:
       typeStr = "GNU_PROPERTY";
       break;
@@ -504,6 +504,8 @@ static const char* getProgramHdrType(Elf64_Phdr *programHdrP){
       break;
     default:
       typeStr = "Unknown";
+      if(programHdrP->p_type > PT_LOPROC && programHdrP->p_type < PT_HIPROC)
+        typeStr = "Unknown processor-specific semantics";
       break;
   }
   return typeStr;
@@ -901,20 +903,99 @@ void freeAll_mini_Phdr_nodes(mini_ELF_Phdr_node* head){
  * Retruns an mini_ELF_Phdr_node (linked list) pointer of the executable program headers.
  * 
  * @return an allocated linked list for mini_ELF_Phdr_node* of mini_ELF_Phdr.
+ *         if None, returns NULL
  * 
  * @note CALL freeAll_mini_Phdr_nodes after done using the structure.
 */
 mini_ELF_Phdr_node* getAllExec_mini_Phdr(void){
   
+  //Initilizing curProgramHdrFileOffset with number location of first program header. 
+  Elf64_Off curProgramHdrFileOffset = elf_Ehdr.e_phoff;
+  if(curProgramHdrFileOffset == 0){
+    // No program headers. (e_phoff is 0)
+    return NULL;
+  }
+
+  //getting numer of program headers.
+  uint64_t numOfProgramHdrs;
+  if((numOfProgramHdrs = getProgramHeadersCount()) == UINT64_MAX){
+    err("Error in getProgramHeadersCount at getAllExec_mini_Phdr.");
+    return NULL;
+  }
+  if (numOfProgramHdrs == 0){
+    // No program headers. (e_phnum is 0)
+    return NULL;
+  }
+
+
+
   mini_ELF_Phdr_node *head = (mini_ELF_Phdr_node*)malloc(sizeof(mini_ELF_Phdr_node));
+  if(head == NULL){
+    // Malloc failed
+    err("Error, Malloc for head failed inside getAllExec_mini_Phdr.\n");
+    return NULL;
+  }
+  head->cur_mini_phdr.vaddr = 0;
+  head->cur_mini_phdr.file_offset = 0;
+  head->cur_mini_phdr.size = 0;
   head->next = NULL;
 
   mini_ELF_Phdr_node *cur = head;
 
+  for(Elf64_Xword programHdrCnt = 0; programHdrCnt < numOfProgramHdrs; programHdrCnt++){
+    //showProgramHdr(curProgramHdrFileOffset);
+
+    //TODO put this into a function:
+    Elf64_Off programHdrOff = curProgramHdrFileOffset;
+    
+    Elf64_Phdr programHdr;
+    if(getProgramHdrByOffset(&programHdr, programHdrOff)){
+      err("Error at getProgramHdrByOffset in ???. program header offset: 0x%" PRIx64 ", program header size: 0x%" PRIx16 "\n", programHdrOff, elf_Ehdr.e_phentsize);
+      printf("continuing\n");
+      continue;
+    }
+
+    //checking if segement is executable
+    if (!(programHdr.p_flags & PF_X))
+      continue;
+    
+    //checking if segement is LOAD (it has to be if exec but still, lets check).
+    if ( programHdr.p_type != PT_LOAD )
+      continue;
 
 
+    
+    
+    if(cur != head){
+      cur->next = (mini_ELF_Phdr_node*)malloc(sizeof(mini_ELF_Phdr_node)); 
+      if(cur->next == NULL){
+        // Malloc failed
+        err("Error, Malloc for cur failed inside getAllExec_mini_Phdr.\n");
 
+        //returning what got until now.
+        return head;
+      }
+      cur = cur->next;
+    }
+
+    //program header is executable.
+    cur->cur_mini_phdr.vaddr = programHdr.p_vaddr;
+    cur->cur_mini_phdr.file_offset = programHdr.p_offset;
+    cur->cur_mini_phdr.size = programHdr.p_filesz; //same as p_memsz in this case (as far as I know)
+    cur->next = NULL;
+
+    //can maybe check here for integer overflow
+    curProgramHdrFileOffset += elf_Ehdr.e_phentsize;
+  }
+
+  if(head->cur_mini_phdr.size == 0){
+    //not even one executable segment was found
+    free(head);
+    return NULL;
+  }
+  
   return head;
+
   /*
   I want to somehow do that:
     get X bytes from entry point.

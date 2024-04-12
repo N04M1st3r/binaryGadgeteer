@@ -146,6 +146,13 @@ int main(int argc, char *argv[])
     //showSectionsHeaders(); //X showScanSections();
     showProgramHeaders();
 
+    printf("getting:\n");
+    mini_ELF_Phdr_node *head = getAllExec_mini_Phdr();
+    
+    printf("freeing:\n");
+    freeAll_mini_Phdr_nodes(head);
+
+    printf("freed.\n");
 
     if(cleanElfUtils()){
         err("Error cleaning elfUtils, in cleanElfUtils inside main.\n");
