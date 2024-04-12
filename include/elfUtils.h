@@ -1,4 +1,19 @@
 #pragma once
+//could have used libelf and such but I want to create it myself.
+#include <stdint.h>
+
+
+//mini program header, with only the stuff I need.
+typedef struct mini_ELF_Phdr{
+  uint64_t vaddr;        //virtual addr in the executable.
+  uint64_t file_offset; //location in the file where the amount is.
+  uint64_t size;        //size.
+} mini_ELF_Phdr;
+
+typedef struct mini_ELF_Phdr_node{
+  mini_ELF_Phdr cur_mini_phdr;
+  struct mini_ELF_Phdr_node* next;
+} mini_ELF_Phdr_node;
 
 //call this before you do anything and you have to get 0.
 int initElfUtils(char const *filename, unsigned long long entryP);
@@ -9,9 +24,10 @@ int cleanElfUtils(void);
 const char* getArch(void);
 
 unsigned long long getEntryPoint(void);
-void showScanSections(void);
+void showSectionsHeaders(void);
 void showProgramHeaders(void);
 
 int getEndiannessEncoding(void);
-//could have used libelf but I want to create it myself.
 
+mini_ELF_Phdr_node* getAllExec_mini_Phdr(void);
+void freeAll_mini_Phdr_nodes(mini_ELF_Phdr_node* node);

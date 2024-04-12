@@ -143,8 +143,7 @@ int main(int argc, char *argv[])
     //endianess:
     //printf("little endian(1), big(2): %d\n", getEndiannessEncoding());
 
-
-    //showScanSections();
+    //showSectionsHeaders(); //X showScanSections();
     showProgramHeaders();
 
 

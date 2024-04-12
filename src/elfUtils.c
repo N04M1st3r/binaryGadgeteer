@@ -41,6 +41,9 @@ static void showProgramHdr(Elf64_Off programHdrOff);
 
 static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_index);
 
+static uint64_t getSectionsCount(void);
+static uint64_t getProgramHeadersCount(void);
+
 
 //BAD: DEL LATER XD
 #define SUPPRESS_WARNING(a) (void)a
@@ -77,17 +80,7 @@ static struct{
 } stringTable = {.data = NULL};
 
 
-//mini program header, with only the stuff I need.
-typedef struct mini_ELF_Phdr{
-  uint64_t vaddr;        //virtual addr in the executable.
-  uint64_t file_offset; //location in the file where the amount is.
-  uint64_t size;        //size.
-} mini_ELF_Phdr;
 
-typedef struct mini_ELF_Phdr_node{
-  mini_ELF_Phdr cur_mini_phdr;
-  struct mini_ELF_Phdr_node* next;
-} mini_ELF_Phdr_node;
 
 
 //maybe save the String Table here.
@@ -707,6 +700,31 @@ unsigned long long getEntryPoint(void){
 
 
 
+/**
+ * Returns number of program headers in the elf.
+ * 
+ * @return the number of program headers. UINT64_MAX if error.
+*/
+static uint64_t getSectionsCount(void){
+  Elf64_Xword numOfSections =  elf_Ehdr.e_shnum; //Elf64_Xword
+
+  //If the number of sections is greater than or equal to SHN_LORESERVE (0xff00), e_shnum has the value SHN_UNDEF (0) and the actual number of section header table entries is contained in the sh_size field of the section header at index 0. Otherwise, the sh_size member of the initial entry contains 0.
+  
+  if (numOfSections == SHN_UNDEF){
+    //the first section has the size.
+    //(did not check, cant find an elf to check that with and don't have the time)
+    Elf64_Shdr section;
+    if(getSectionHdrByOffset(&section, elf_Ehdr.e_shoff)){
+      //or maybe not except? idk. not important for my project, maybe I will add later.
+      err("Error in getSectionHdrByOffset at getSectionsCount, getting the first(0th) section. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", elf_Ehdr.e_shoff, elf_Ehdr.e_shentsize);
+      return UINT64_MAX;
+    }
+    numOfSections = section.sh_size;
+  }
+
+  return numOfSections;
+  
+}
 
 
 
@@ -719,7 +737,7 @@ unsigned long long getEntryPoint(void){
  * 
  * $ readelf -S prog
 */
-void showScanSections(void){
+void showSectionsHeaders(void){
   //start scanning from elf_Ehdr.e_shoff
   
 
@@ -742,24 +760,15 @@ void showScanSections(void){
     return;
   }
 
-  //not Elf64_Half because it can be bigger.
-  Elf64_Xword numOfSections =  elf_Ehdr.e_shnum;
+  uint64_t numOfSections;
+  if ((numOfSections = getSectionsCount()) == UINT64_MAX){
+    err("Error in getSectionsCount at showSectionsHeaders.");
+    return;
+  }
 
-  //If the number of sections is greater than or equal to SHN_LORESERVE (0xff00), e_shnum has the value SHN_UNDEF (0) and the actual number of section header table entries is contained in the sh_size field of the section header at index 0. Otherwise, the sh_size member of the initial entry contains 0.
-  if (numOfSections == SHN_UNDEF){
-    //the first section has the size.
-    //(did not check, cant find an elf to check that with and don't have the time)
-    Elf64_Shdr section;
-    if(getSectionHdrByOffset(&section, curSectionFileOffset)){
-      //or maybe not except? idk. not important for my project, maybe I will add later.
-      err("Error in getSectionHdrByOffset at showScanSections, getting the first(0th) section. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", curSectionFileOffset, elf_Ehdr.e_shentsize);
-      return;
-    }
-    numOfSections = section.sh_size;
-    if(numOfSections == 0){
-      printf("No sections (except the 0th one that says there are none)\n");
-      return;
-    }
+  if(numOfSections == 0){
+    printf("No Sections.\n");
+    return;
   }
 
   for(Elf64_Xword sectionCnt=0; sectionCnt < numOfSections; sectionCnt++){
@@ -770,6 +779,31 @@ void showScanSections(void){
   }
 }
 
+/**
+ * Returns number of program headers in the elf.
+ * 
+ * @return the number of program headers. UINT64_MAX if error.
+*/
+static uint64_t getProgramHeadersCount(void){
+  uint64_t numOfProgramHdrs = elf_Ehdr.e_phnum;
+
+  /* Special value for e_phnum.  This indicates that the real number of
+   program headers is too large to fit into e_phnum.  Instead the real
+   value is in the field sh_info of section 0.  */
+  //#define PN_XNUM		0xffff
+  if (numOfProgramHdrs == PN_XNUM){
+    //this was NEVER checked!
+    //the first (section!) has the size.
+
+    Elf64_Shdr section;
+    if(getSectionHdrByOffset(&section, elf_Ehdr.e_shoff)){
+      err("Error in getSectionHdrByOffset at getProgramHeadersCount, getting the first(0th) section. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", elf_Ehdr.e_shoff, elf_Ehdr.e_shentsize);
+      return UINT64_MAX;
+    }
+    numOfProgramHdrs = section.sh_info;
+  }
+  return numOfProgramHdrs;
+}
 
 /**
  * Shows all the program section headers and thier premissions.
@@ -786,34 +820,16 @@ void showProgramHeaders(void){ //TODO: do this
     return;
   }
 
-  Elf64_Xword numOfProgramHdrs =  elf_Ehdr.e_phnum;
+  uint64_t numOfProgramHdrs;
+  if((numOfProgramHdrs = getProgramHeadersCount()) == UINT64_MAX){
+    err("Error in getProgramHeadersCount at showProgramHeaders.");
+    return;
+  }
 
   if (numOfProgramHdrs == 0){
     printf("No program headers. (e_phnum is 0)");
     return;
   }
-
-
-  /* Special value for e_phnum.  This indicates that the real number of
-   program headers is too large to fit into e_phnum.  Instead the real
-   value is in the field sh_info of section 0.  */
-  //#define PN_XNUM		0xffff
-  if (numOfProgramHdrs == PN_XNUM){
-    //this was NEVER checked!
-    //the first (section!) has the size.
-
-    Elf64_Shdr section;
-    if(getSectionHdrByOffset(&section, elf_Ehdr.e_shoff)){
-      err("Error in getSectionHdrByOffset at showProgramHeaders, getting the first(0th) section. section header offset: 0x%" PRIx64 ", section header size: 0x%" PRIx16 "\n", elf_Ehdr.e_shoff, elf_Ehdr.e_shentsize);
-      return;
-    }
-    numOfProgramHdrs = section.sh_info;
-    if(numOfProgramHdrs == 0){
-      printf("No segments\n");
-      return;
-    }
-  }
-
 
   for(Elf64_Xword programHdrCnt = 0; programHdrCnt < numOfProgramHdrs; programHdrCnt++){
     showProgramHdr(curProgramHdrFileOffset);
@@ -859,33 +875,46 @@ void showProgramHdr(Elf64_Off programHdrOff){
 
 
 /**
- * Frees the mini_Phdr_arr array and the mini_ELF_Phdr* in it.
+ * Frees the mini_ELF_Phdr_node* and everything if has (recursive, without recursion).
 */
-void freeAll_mini_Shdr(mini_ELF_Phdr* mini_Phdr_arr){
-  //UNUSED(mini_Phdr_arr);
+void freeAll_mini_Phdr_nodes(mini_ELF_Phdr_node* head){
+  
+  /*
+  //In recursion:
+  if(head == NULL)
+    return;  
+  freeAll_mini_Phdr_nodes(head->next);
+  free(head);
+  */
+
+  mini_ELF_Phdr_node* tmp;
+
+  while(head != NULL){
+    tmp = head;
+    head = head->next;
+    free(tmp);
+  }
+
 }
 
 /**
- * Retruns an allocated array of the executable program headers.
+ * Retruns an mini_ELF_Phdr_node (linked list) pointer of the executable program headers.
  * 
- * @return an allocated array of mini_ELF_Phdr* of type mini_ELF_Phdr** and size 
+ * @return an allocated linked list for mini_ELF_Phdr_node* of mini_ELF_Phdr.
  * 
- * @note the array is allocated, you need to free it and everything in it!
- * @note call free_miniElf64_ShdrP, which will free the array and everything in it.
- * 
- * @note TODO do something for the end of the array
- * 
- * @note CALL freeAll_mini_Shdr after done using the array.
+ * @note CALL freeAll_mini_Phdr_nodes after done using the structure.
 */
-//TODO: DO IT!
-mini_ELF_Phdr** getAllExec_mini_Phdr(){
-  //malloc(elf_Ehdr.)
+mini_ELF_Phdr_node* getAllExec_mini_Phdr(void){
   
+  mini_ELF_Phdr_node *head = (mini_ELF_Phdr_node*)malloc(sizeof(mini_ELF_Phdr_node));
+  head->next = NULL;
+
+  mini_ELF_Phdr_node *cur = head;
 
 
 
 
-  return NULL;
+  return head;
   /*
   I want to somehow do that:
     get X bytes from entry point.
