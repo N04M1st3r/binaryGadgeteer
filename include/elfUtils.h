@@ -5,9 +5,9 @@
 
 //mini program header, with only the stuff I need.
 typedef struct mini_ELF_Phdr{
-  Elf64_Addr vaddr;        //virtual addr in the executable.         (uint64_t)
-  Elf64_Off file_offset; //location in the file where the amount is. (uint64_t)
-  Elf64_Xword size;        //size.                                   (uint64_t)
+  uint64_t vaddr;        //virtual addr in the executable.            (Elf64_Addr)
+  uint64_t file_offset;  //location in the file where the amount is.  (Elf64_Off)
+  uint64_t size;         //size.                                      (Elf64_Xword)
 } mini_ELF_Phdr;
 
 typedef struct mini_ELF_Phdr_node{

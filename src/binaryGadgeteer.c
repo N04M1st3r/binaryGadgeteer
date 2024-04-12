@@ -147,10 +147,13 @@ int main(int argc, char *argv[])
     showProgramHeaders();
 
     printf("getting:\n");
+
+    char buffer[1000];
+
     mini_ELF_Phdr_node *head = getAllExec_mini_Phdr();
     if(head == NULL){
         err("getAllExec_mini_Phdr returned NULL, no program headers.");
-        return;
+        return 1;
     }
 
     mini_ELF_Phdr_node *cur = head;
@@ -159,14 +162,14 @@ int main(int argc, char *argv[])
         //TODO: add some zeros to the right and left on the start (first read)
         // (and take from last one) ZYDIS_MAX_INSTRUCTION_LENGTH
 
-        if (readFileData(cur->file_offset, 1000)){
+        if (readFileData(cur->cur_mini_phdr.file_offset, 1000, &buffer)){
             err("error in readFileData at main.");
-            return;
+            return 2;
         }
         char prefix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //before the offset.
         char suffix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //after the offset
         
-        uint64_t cur
+        //uint64_t cur
 
 
     }

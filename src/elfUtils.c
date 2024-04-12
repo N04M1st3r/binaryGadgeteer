@@ -252,7 +252,7 @@ static int initStringTable(void){
     return 1;
   }
 
-  stringTable.data = malloc(stringTable.Shdr.sh_size);
+  stringTable.data = (char *) malloc(stringTable.Shdr.sh_size);
   if(stringTable.data == NULL){
     // Malloc failed
     err("Malloc for stringTable.data failed inside initStringTable.\n");
@@ -879,7 +879,7 @@ void showProgramHdr(Elf64_Off programHdrOff){
 /**
  * Frees the mini_ELF_Phdr_node* and everything if has (recursive, without recursion).
 */
-void freeAll_mini_Phdr_nodes(mini_ELF_Phdr_node* head){
+void freeAll_mini_Phdr_nodes(mini_ELF_Phdr_node *head){
   
   /*
   //In recursion:
@@ -889,7 +889,7 @@ void freeAll_mini_Phdr_nodes(mini_ELF_Phdr_node* head){
   free(head);
   */
 
-  mini_ELF_Phdr_node* tmp;
+  mini_ELF_Phdr_node *tmp;
 
   while(head != NULL){
     tmp = head;
@@ -957,9 +957,7 @@ mini_ELF_Phdr_node* getAllExec_mini_Phdr(void){
     return NULL;
   }
 
-
-
-  mini_ELF_Phdr_node *head = (mini_ELF_Phdr_node*)malloc(sizeof(mini_ELF_Phdr_node));
+  mini_ELF_Phdr_node *head = (mini_ELF_Phdr_node *) malloc(sizeof(mini_ELF_Phdr_node));
   if(head == NULL){
     // Malloc failed
     err("Error, Malloc for head failed inside getAllExec_mini_Phdr.\n");
@@ -981,7 +979,7 @@ mini_ELF_Phdr_node* getAllExec_mini_Phdr(void){
     Elf64_Phdr programHdr;
     if(getProgramHdrByOffset(&programHdr, programHdrOff)){
       err("Error at getProgramHdrByOffset in ???. program header offset: 0x%" PRIx64 ", program header size: 0x%" PRIx16 "\n", programHdrOff, elf_Ehdr.e_phentsize);
-      printf("continuing\n");
+      printf("Continuing\n");
       continue;
     }
 
@@ -997,7 +995,7 @@ mini_ELF_Phdr_node* getAllExec_mini_Phdr(void){
     
     
     if(cur != head){
-      cur->next = (mini_ELF_Phdr_node*)malloc(sizeof(mini_ELF_Phdr_node)); 
+      cur->next = (mini_ELF_Phdr_node *) malloc(sizeof(mini_ELF_Phdr_node)); 
       if(cur->next == NULL){
         // Malloc failed
         err("Error, Malloc for cur failed inside getAllExec_mini_Phdr.\n");
