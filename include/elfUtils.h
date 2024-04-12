@@ -31,3 +31,5 @@ int getEndiannessEncoding(void);
 
 mini_ELF_Phdr_node* getAllExec_mini_Phdr(void);
 void freeAll_mini_Phdr_nodes(mini_ELF_Phdr_node* node);
+
+int readFileData(uint64_t from, uint64_t size, char *buffer);

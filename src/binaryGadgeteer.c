@@ -148,15 +148,26 @@ int main(int argc, char *argv[])
 
     printf("getting:\n");
     mini_ELF_Phdr_node *head = getAllExec_mini_Phdr();
+    if(head == NULL){
+        err("getAllExec_mini_Phdr returned NULL, no program headers.");
+        return;
+    }
+
+    mini_ELF_Phdr_node *cur = head;
+    while(cur != NULL){
+        readFileData();
+    }
     
+    
+
+
+
     printf("freeing:\n");
     freeAll_mini_Phdr_nodes(head);
-
-    printf("freed.\n");
-
     if(cleanElfUtils()){
         err("Error cleaning elfUtils, in cleanElfUtils inside main.\n");
     }
+
     exit(0);
     ZydisEncoderRequest req;
     memset(&req, 0, sizeof(req));

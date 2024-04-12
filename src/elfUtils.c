@@ -900,6 +900,36 @@ void freeAll_mini_Phdr_nodes(mini_ELF_Phdr_node* head){
 }
 
 /**
+ * Reads from file from from size bytes into buffer.
+ * 
+ * @param from, location to start reading in file.
+ * @param size, amount to read from the file.
+ * @param buffer, buffer to read into.
+ * 
+ * @return returns 0 on success, else something else.(-1 for example)
+ * 
+ * @note The caller has to make sure that buffer is atleast size size.  
+*/
+int readFileData(uint64_t from, uint64_t size, char *buffer){
+  //TODO: Use this to make the code cleaner.
+  //64 bit because I set _FILE_OFFSET_BITS=64 before
+  //TODO: look into this later.
+  //maybe do something else, https://stackoverflow.com/questions/4357570/use-file-offset64-vs-file-offset-bits-64
+  //this is so fseek with be fseek64 and fread will be fread64.
+
+  if (fseek(file, from, SEEK_SET) != 0){
+    err("Error in fseek at readFileData. from 0x%" PRIx64, from);
+    return 1;
+  }
+  if (fread(buffer, sizeof(char), size, file) != size){
+    err("Couldn't fread buffer, in readFileData at fread. reading to %p, from 0x%" PRIx64 ", size 0x%" PRIx64, buffer, from, size);
+    return 2;
+  }
+
+  return 0;
+}
+
+/**
  * Retruns an mini_ELF_Phdr_node (linked list) pointer of the executable program headers.
  * 
  * @return an allocated linked list for mini_ELF_Phdr_node* of mini_ELF_Phdr.
