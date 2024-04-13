@@ -25,8 +25,8 @@ static int setupElf_ehdr(void);
 static int setupBits(void);
 static int initStringTable(void);
 
-static const char* getSectionName(Elf64_Shdr *sectionHdrP);
-static const char* getProgramHdrType(Elf64_Phdr *programHdrP);
+static const char *getSectionName(Elf64_Shdr *sectionHdrP);
+static const char *getProgramHdrType(Elf64_Phdr *programHdrP);
 
 
 static void showSectionHdrFlags(Elf64_Shdr *sectionHdrP);
@@ -229,7 +229,7 @@ static int setupBits(void){
  * 
  * @note in the string table the section name needs to end with \0 (room for vulnerability btw)
 */
-static const char* getSectionName(Elf64_Shdr *sectionHdrP){
+static const char *getSectionName(Elf64_Shdr *sectionHdrP){
   return stringTable.data + sectionHdrP->sh_name;
 }
 
@@ -362,7 +362,7 @@ static int getProgramHdrByOffset(Elf64_Phdr *result_Phdr, Elf64_Off programHdrOf
 static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_index){
 
   //TODO: check if the section index is after the size of the sections here. (so no overflow read kinda)
-  Elf64_Off sectionHdrOff = elf_Ehdr.e_shoff + elf_Ehdr.e_shentsize*section_index;
+  Elf64_Off sectionHdrOff = elf_Ehdr.e_shoff + elf_Ehdr.e_shentsize * section_index;
 
   if(getSectionHdrByOffset(result_Shdr, sectionHdrOff) != 0){
     err("Error inside getSectionHdrByIndex, while calling getSectionHdrByOffset index 0x%" PRIx64 "\n", section_index);
@@ -425,7 +425,7 @@ static void showSectionHdr(Elf64_Off sectionHdrOff){
  * 0xf0000000 for Unspecified (PF_MASKPROC)
 */
 static void showProgramHdrFlags(Elf64_Phdr *programHdrP){
-  printf("flags: ");
+  printf("flags(0x%" PRIx32 "): ", programHdrP->p_flags);
 
   if (programHdrP->p_flags & PF_X)
     printf(INDENT_STR "Executable");
@@ -450,7 +450,7 @@ static void showProgramHdrFlags(Elf64_Phdr *programHdrP){
  * @return name of type of program header (char*)
  * 
 */
-static const char* getProgramHdrType(Elf64_Phdr *programHdrP){
+static const char *getProgramHdrType(Elf64_Phdr *programHdrP){
   
   char *typeStr;
   switch(programHdrP->p_type){
@@ -498,6 +498,7 @@ static const char* getProgramHdrType(Elf64_Phdr *programHdrP){
       break;
     case PT_GNU_RELRO:
       typeStr = "GNU_RELRO";
+      
       break;
     case PT_GNU_STACK:
       typeStr = "GNU_STACK";
@@ -620,7 +621,7 @@ int initElfUtils(char const *filename, unsigned long long entryP){
  * @note YOU HAVE TO CALL initElfUtils before calling this, and it to be doen with no errors.
  * @note can make larger with this https://refspecs.linuxfoundation.org/elf/gabi4+/ch4.eheader.html
 */
-const char* getArch(void){
+const char *getArch(void){
   Elf32_Half machine = elf_Ehdr.e_machine;
   
   switch(machine){
@@ -877,19 +878,19 @@ void showProgramHdr(Elf64_Off programHdrOff){
 
 
 /**
- * Frees the mini_ELF_Phdr_node* and everything if has (recursive, without recursion).
+ * Frees the Mini_ELF_Phdr_node* and everything if has (recursive, without recursion).
 */
-void freeAll_mini_Phdr_nodes(mini_ELF_Phdr_node *head){
+void freeAll_Mini_Phdr_nodes(Mini_ELF_Phdr_node *head){
   
   /*
   //In recursion:
   if(head == NULL)
     return;  
-  freeAll_mini_Phdr_nodes(head->next);
+  freeAll_Mini_Phdr_nodes(head->next);
   free(head);
   */
 
-  mini_ELF_Phdr_node *tmp;
+  Mini_ELF_Phdr_node *tmp;
 
   while(head != NULL){
     tmp = head;
@@ -929,16 +930,22 @@ int readFileData(uint64_t from, uint64_t size, char *buffer){
   return 0;
 }
 
+
+void ShowAll_Mini_ELF_Phdr(){
+
+}
+
 /**
- * Retruns an mini_ELF_Phdr_node (linked list) pointer of the executable program headers.
+ * Retruns an Mini_ELF_Phdr_node (linked list) pointer of the executable program headers.
  * 
- * @return an allocated linked list for mini_ELF_Phdr_node* of mini_ELF_Phdr.
+ * @return an allocated linked list for Mini_ELF_Phdr_node* of mini_ELF_Phdr.
  *         if None, returns NULL
  * 
- * @note CALL freeAll_mini_Phdr_nodes after done using the structure.
+ * @note CALL freeAll_Mini_Phdr_nodes after done using the structure.
 */
-mini_ELF_Phdr_node* getAllExec_mini_Phdr(void){
-  
+Mini_ELF_Phdr_node *getAllExec_Mini_Phdr(void){
+  //TODO: MUST!!! SWITCH INTO MORE FUNCTIONS! (To make more clean and understandable)
+
   //Initilizing curProgramHdrFileOffset with number location of first program header. 
   Elf64_Off curProgramHdrFileOffset = elf_Ehdr.e_phoff;
   if(curProgramHdrFileOffset == 0){
@@ -949,7 +956,7 @@ mini_ELF_Phdr_node* getAllExec_mini_Phdr(void){
   //getting numer of program headers.
   uint64_t numOfProgramHdrs;
   if((numOfProgramHdrs = getProgramHeadersCount()) == UINT64_MAX){
-    err("Error in getProgramHeadersCount at getAllExec_mini_Phdr.");
+    err("Error in getProgramHeadersCount at getAllExec_Mini_Phdr.");
     return NULL;
   }
   if (numOfProgramHdrs == 0){
@@ -957,10 +964,10 @@ mini_ELF_Phdr_node* getAllExec_mini_Phdr(void){
     return NULL;
   }
 
-  mini_ELF_Phdr_node *head = (mini_ELF_Phdr_node *) malloc(sizeof(mini_ELF_Phdr_node));
+  Mini_ELF_Phdr_node *head = (Mini_ELF_Phdr_node *) malloc(sizeof(Mini_ELF_Phdr_node));
   if(head == NULL){
     // Malloc failed
-    err("Error, Malloc for head failed inside getAllExec_mini_Phdr.\n");
+    err("Error, Malloc for head failed inside getAllExec_Mini_Phdr.\n");
     return NULL;
   }
   head->cur_mini_phdr.vaddr = 0;
@@ -968,9 +975,9 @@ mini_ELF_Phdr_node* getAllExec_mini_Phdr(void){
   head->cur_mini_phdr.size = 0;
   head->next = NULL;
 
-  mini_ELF_Phdr_node *cur = head;
+  Mini_ELF_Phdr_node *cur = head;
 
-  for(Elf64_Xword programHdrCnt = 0; programHdrCnt < numOfProgramHdrs; programHdrCnt++){
+  for(Elf64_Xword programHdrCnt = 0; programHdrCnt < numOfProgramHdrs; programHdrCnt++, curProgramHdrFileOffset+=elf_Ehdr.e_phentsize){
     //showProgramHdr(curProgramHdrFileOffset);
 
     //TODO put this into a function:
@@ -987,18 +994,21 @@ mini_ELF_Phdr_node* getAllExec_mini_Phdr(void){
     if (!(programHdr.p_flags & PF_X))
       continue;
     
+    printf("OK..\n");
+
     //checking if segement is LOAD (it has to be if exec but still, lets check).
     if ( programHdr.p_type != PT_LOAD )
       continue;
 
 
-    
+    printf("GOOD\n");
     
     if(cur != head){
-      cur->next = (mini_ELF_Phdr_node *) malloc(sizeof(mini_ELF_Phdr_node)); 
+      printf("IN HERE\n");
+      cur->next = (Mini_ELF_Phdr_node *) malloc(sizeof(Mini_ELF_Phdr_node)); 
       if(cur->next == NULL){
         // Malloc failed
-        err("Error, Malloc for cur failed inside getAllExec_mini_Phdr.\n");
+        err("Error, Malloc for cur failed inside getAllExec_Mini_Phdr.\n");
 
         //returning what got until now.
         return head;

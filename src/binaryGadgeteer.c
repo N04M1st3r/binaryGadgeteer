@@ -33,6 +33,12 @@
 //for tolower() in the parsing of the input
 #include <ctype.h>
 
+#define READ_AMOUNT 1000
+
+typedef struct FoundLocationsNode{
+    uint64_t offset;
+    struct FoundLocationsNode *next;
+} FoundLocationsNode;
 
 
 static unsigned long long base_address_number = 0;
@@ -48,6 +54,7 @@ static char const *HELP_TEXT =
 
 static char const *VERSION_TEXT = 
     "binaryGadgeteer: Version 1.0\n";
+
 
 
 static void parseOptionAddress(char const *address_s){
@@ -120,8 +127,43 @@ static void readOptions(int argc, char **argv){
 }
 
 
-//TODO: delete this
-#define BUFFER_SIZE 1024
+/**
+ * Searching for all occurnces of searchBytes in buffer.
+ * 
+ * @param buffer, the buffer that is searched in.
+ * @param bufferSize, the size of the buffer that is searched.
+ * @param searchBytes, the bytes to search for in the buffer.
+ * @param amountOfBytes, the amount of bytes to search.
+ * 
+ * @note not the most efficent way
+*/
+/*
+I need to implement an algorithm that will do the following:
+Search for m1, m2, m3,..., mk (bytes/string) in S(bytes/string).
+in an effective way.
+*/
+/*
+foundLocationsNode* searchInBuffer(char *buffer, uint64_t bufferSize, char *searchBytes, uint64_t amountOfBytes){
+
+}*/
+
+/**
+ * This is temporary, create a full search strings so it will also work for others later,
+ * and maybe use regex or implement ahoCorasick.
+ * 
+ * This searches for all ret occurnces in a buffer and returns those indexies.
+ * 
+ * @param buffer, the buffer.
+ * @param bufferSize, the bufferSize
+ * 
+ * @return foundLocationsNode*, a linked list of all the location it found.
+ *          returning NULL when none found in buffer.
+ */
+FoundLocationsNode *searchRetInBuffer(char *buffer, uint64_t bufferSize){
+    //just as a POC
+
+    return NULL;
+}
 
 
 int main(int argc, char *argv[])
@@ -129,7 +171,7 @@ int main(int argc, char *argv[])
     readOptions(argc, argv);
 
     printf("starting\n");
-    if(initElfUtils("./checkMe", -1)){
+    if(initElfUtils(filename, -1)){ //"./checkMe"
         err("error inside initElfUtils at main.");
         return 1;
     }
@@ -148,30 +190,48 @@ int main(int argc, char *argv[])
 
     printf("getting:\n");
 
-    char buffer[1000];
+    char buffer[READ_AMOUNT];
 
-    mini_ELF_Phdr_node *head = getAllExec_mini_Phdr();
+    Mini_ELF_Phdr_node *head = getAllExec_Mini_Phdr();
+    printf("GOT;;;;;\n");
     if(head == NULL){
-        err("getAllExec_mini_Phdr returned NULL, no program headers.");
+        err("getAllExec_Mini_Phdr returned NULL, no program headers.");
         return 1;
     }
 
-    mini_ELF_Phdr_node *cur = head;
-    while(cur != NULL){
-        //until I read cur->size
-        //TODO: add some zeros to the right and left on the start (first read)
-        // (and take from last one) ZYDIS_MAX_INSTRUCTION_LENGTH
+    Mini_ELF_Phdr_node *curMiniHdrNode = head;
+    
+    //until I read cur->size
+    //TODO: add some zeros to the right and left on the start (first read)
+    // (and take from last one) ZYDIS_MAX_INSTRUCTION_LENGTH
+    char prefix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //before the offset.
 
-        if (readFileData(cur->cur_mini_phdr.file_offset, 1000, &buffer)){
-            err("error in readFileData at main.");
-            return 2;
-        }
-        char prefix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //before the offset.
-        char suffix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //after the offset
+    while(curMiniHdrNode != NULL){
         
-        //uint64_t cur
+        //offset from beggening
+        uint64_t offset = 0;
+
+        while (offset < curMiniHdrNode->cur_mini_phdr.size){
+            uint64_t readAmount = curMiniHdrNode->cur_mini_phdr.size - offset;
+            readAmount = readAmount > READ_AMOUNT ? READ_AMOUNT : readAmount;
+
+            if (readFileData(curMiniHdrNode->cur_mini_phdr.file_offset + offset, readAmount, &buffer)){
+                err("error in readFileData at main.");
+                return 2;
+            }
+
+            
+            //foundLocations = searchInBuffer()
+
+            
+
+        }
+
+        
 
 
+
+        curMiniHdrNode = curMiniHdrNode->next;
     }
     
     
@@ -179,7 +239,7 @@ int main(int argc, char *argv[])
 
 
     printf("freeing:\n");
-    freeAll_mini_Phdr_nodes(head);
+    freeAll_Mini_Phdr_nodes(head);
     if(cleanElfUtils()){
         err("Error cleaning elfUtils, in cleanElfUtils inside main.\n");
     }

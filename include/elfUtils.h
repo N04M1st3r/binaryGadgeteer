@@ -10,10 +10,10 @@ typedef struct mini_ELF_Phdr{
   uint64_t size;         //size.                                      (Elf64_Xword)
 } mini_ELF_Phdr;
 
-typedef struct mini_ELF_Phdr_node{
+typedef struct Mini_ELF_Phdr_node{
   mini_ELF_Phdr cur_mini_phdr;
-  struct mini_ELF_Phdr_node* next;
-} mini_ELF_Phdr_node;
+  struct Mini_ELF_Phdr_node *next;
+} Mini_ELF_Phdr_node;
 
 //call this before you do anything and you have to get 0.
 int initElfUtils(char const *filename, unsigned long long entryP);
@@ -21,7 +21,7 @@ int initElfUtils(char const *filename, unsigned long long entryP);
 //call this when you finish using this class.
 int cleanElfUtils(void);
 
-const char* getArch(void);
+const char *getArch(void);
 
 unsigned long long getEntryPoint(void);
 void showSectionsHeaders(void);
@@ -29,7 +29,7 @@ void showProgramHeaders(void);
 
 int getEndiannessEncoding(void);
 
-mini_ELF_Phdr_node* getAllExec_mini_Phdr(void);
-void freeAll_mini_Phdr_nodes(mini_ELF_Phdr_node* node);
+Mini_ELF_Phdr_node *getAllExec_Mini_Phdr(void);
+void freeAll_Mini_Phdr_nodes(Mini_ELF_Phdr_node *node);
 
 int readFileData(uint64_t from, uint64_t size, char *buffer);
