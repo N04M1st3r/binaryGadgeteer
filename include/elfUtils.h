@@ -1,6 +1,7 @@
 #pragma once
 //could have used libelf and such but I want to create it myself.
 #include <stdint.h>
+#include <stdbool.h>
 
 
 //mini program header, with only the stuff I need.
@@ -22,6 +23,7 @@ int initElfUtils(char const *filename, unsigned long long entryP);
 int cleanElfUtils(void);
 
 const char *getArch(void);
+bool is64Bit(void);
 
 unsigned long long getEntryPoint(void);
 void showSectionsHeaders(void);

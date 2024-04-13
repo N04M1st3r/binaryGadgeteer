@@ -6,6 +6,8 @@
 //to see errors
 #include "costumErrors.h"
 
+#include "endGadgetFind.h"
+
 //to print
 #include <stdio.h>
 
@@ -33,12 +35,9 @@
 //for tolower() in the parsing of the input
 #include <ctype.h>
 
+
 #define READ_AMOUNT 1000
 
-typedef struct FoundLocationsNode{
-    uint64_t offset;
-    struct FoundLocationsNode *next;
-} FoundLocationsNode;
 
 
 static unsigned long long base_address_number = 0;
@@ -147,27 +146,73 @@ foundLocationsNode* searchInBuffer(char *buffer, uint64_t bufferSize, char *sear
 
 }*/
 
-/**
- * This is temporary, create a full search strings so it will also work for others later,
- * and maybe use regex or implement ahoCorasick.
- * 
- * This searches for all ret occurnces in a buffer and returns those indexies.
- * 
- * @param buffer, the buffer.
- * @param bufferSize, the bufferSize
- * 
- * @return foundLocationsNode*, a linked list of all the location it found.
- *          returning NULL when none found in buffer.
- */
-FoundLocationsNode *searchRetInBuffer(char *buffer, uint64_t bufferSize){
-    //just as a POC
 
-    return NULL;
-}
 
 
 int main(int argc, char *argv[])
 {
+    /*char *mnemonicStr = ZydisMnemonicGetString(ZYDIS_MNEMONIC_RET);
+    printf("here: %s\n", mnemonicStr);
+
+    ZydisShortString *str = ZydisMnemonicGetStringWrapped(ZYDIS_MNEMONIC_RET);
+    printf("size: 0x%" PRIx8 "\n", str->size);
+    printf("\ns: %s\n", str->data);
+    //https://doc.zydis.re/v4.0.0/html/structZydisEncoderRequest__
+
+
+    //https://www.felixcloutier.com/x86/ret
+    ZydisEncoderRequest reqRET;
+    memset(&reqRET, 0, sizeof(reqRET));
+    reqRET.machine_mode = ZYDIS_MACHINE_MODE_LONG_64; //ZYDIS_MACHINE_MODE_LEGACY_32; //ZYDIS_MACHINE_MODE_LONG_64 
+    //reqRET.allowed_encodings
+    reqRET.mnemonic = ZYDIS_MNEMONIC_RET;
+    //reqRET.prefixes(A combination of requested encodable prefixes)
+    reqRET.branch_type = ZYDIS_BRANCH_TYPE_NEAR; //https://doc.zydis.re/v4.0.0/html/DecoderTypes_8h#a3f3403c7ff379144e3e77ed31baa1511
+    reqRET.branch_width = ZYDIS_BRANCH_WIDTH_NONE; //https://doc.zydis.re/v4.0.0/html/Encoder_8h#ac18d50bda13b1a44a87b1e5331bc1e22
+    
+    reqRET.operand_count = 1;
+    reqRET.operands[0].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
+    reqRET.operands[0].imm.u = 0; 
+    //short: there is no jmp short.
+    //near: c3.
+    //far: cb.           
+
+    //reqRET.operands[]
+    
+    //After doing a lot of checks, it seems the best solution is to hard code the opcodes for the stuff I need to search fast.
+    //I will add a feature of my own to search for your stuff but for stuff like ret, jmp ect.. I will need to hard code.
+
+    ZyanU8 instruction_opcode[ZYDIS_MAX_INSTRUCTION_LENGTH];
+    ZyanUSize len = sizeof(instruction_opcode);
+
+    ZyanStatus status = ZydisEncoderEncodeInstruction(&reqRET, instruction_opcode, &len);
+    printf("%d\n", ZYAN_FAILED(status));
+    for(int i=0; i<len; i++){
+        printf("0x%" PRIx8 " ", instruction_opcode[i]);
+    }
+    
+    printf("\n");
+    exit(1);
+    ZydisEncoderRequest reqA;
+    memset(&reqA, 0, sizeof(reqA));
+    reqA.mnemonic = ZYDIS_MNEMONIC_RET;
+    reqA.machine_mode = ZYDIS_MACHINE_MODE_LEGACY_32;
+    reqA.operand_count = 0;
+    ZyanU8 encoded_instructionA[ZYDIS_MAX_INSTRUCTION_LENGTH];
+    ZyanUSize encoded_lengthA = sizeof(encoded_instructionA);
+
+    if (ZYAN_FAILED(ZydisEncoderEncodeInstruction(&reqA, encoded_instructionA, &encoded_lengthA))){
+        puts("Filed to encode instruction :(");
+        return 1;
+    }
+
+    for(int i=0; i<encoded_lengthA; i++){
+        printf("0x%" PRIx8 " ", encoded_instructionA[i]);
+    }
+    printf("\n");
+
+    exit(0);*/
+    //works:
     readOptions(argc, argv);
 
     printf("starting\n");
@@ -190,7 +235,7 @@ int main(int argc, char *argv[])
 
     printf("getting:\n");
 
-    char buffer[READ_AMOUNT];
+    char buffer[READ_AMOUNT]; //allocate this on the heap later (because it is going to be super big)
 
     Mini_ELF_Phdr_node *head = getAllExec_Mini_Phdr();
     printf("GOT;;;;;\n");
@@ -204,7 +249,22 @@ int main(int argc, char *argv[])
     //until I read cur->size
     //TODO: add some zeros to the right and left on the start (first read)
     // (and take from last one) ZYDIS_MAX_INSTRUCTION_LENGTH
+    
+    //implement this later!
     char prefix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //before the offset.
+
+    //Todo actually use getArch to see the arch
+    printf("arch: %s", getArch());
+    ArchInfo *arch; 
+    if(is64Bit())
+        arch = initArchInfo("x64");
+    else
+        arch = initArchInfo("x86");
+    
+    if(arch == NULL){
+        err("Some error getting the arch info :(");
+        exit(1);
+    }
 
     while(curMiniHdrNode != NULL){
         
@@ -215,13 +275,14 @@ int main(int argc, char *argv[])
             uint64_t readAmount = curMiniHdrNode->cur_mini_phdr.size - offset;
             readAmount = readAmount > READ_AMOUNT ? READ_AMOUNT : readAmount;
 
-            if (readFileData(curMiniHdrNode->cur_mini_phdr.file_offset + offset, readAmount, &buffer)){
+            if (readFileData(curMiniHdrNode->cur_mini_phdr.file_offset + offset, readAmount, buffer)){
                 err("error in readFileData at main.");
                 return 2;
             }
 
             
             //foundLocations = searchInBuffer()
+            FoundLocationsNode *locations = searchRetInBuffer(buffer, readAmount, arch);
 
             
 
@@ -239,12 +300,19 @@ int main(int argc, char *argv[])
 
 
     printf("freeing:\n");
+    freeArchInfo(arch);
+    arch = (ArchInfo *)NULL;
+
     freeAll_Mini_Phdr_nodes(head);
+    head = (Mini_ELF_Phdr_node *)NULL;
+    
     if(cleanElfUtils()){
         err("Error cleaning elfUtils, in cleanElfUtils inside main.\n");
     }
 
     exit(0);
+
+    //I THINK: using zydis v4.0.0 (or the other version 4.0.?)
     ZydisEncoderRequest req;
     memset(&req, 0, sizeof(req));
 

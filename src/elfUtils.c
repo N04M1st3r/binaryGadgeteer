@@ -931,8 +931,8 @@ int readFileData(uint64_t from, uint64_t size, char *buffer){
 }
 
 
-void ShowAll_Mini_ELF_Phdr(){
-
+bool is64Bit(void){
+  return is64BitElf;
 }
 
 /**
