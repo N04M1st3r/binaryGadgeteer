@@ -272,6 +272,8 @@ int main(int argc, char *argv[])
             uint64_t readAmount = curMiniHdrNode->cur_mini_phdr.size - offset;
             readAmount = readAmount > READ_AMOUNT ? READ_AMOUNT : readAmount;
 
+            uint64_t buf_vaddr = curMiniHdrNode->cur_mini_phdr.vaddr + offset;
+
             if (readFileData(curMiniHdrNode->cur_mini_phdr.file_offset + offset, readAmount, buffer)){
                 err("error in readFileData at main.");
                 return 2;
@@ -279,8 +281,8 @@ int main(int argc, char *argv[])
 
             
             //foundLocations = searchInBuffer()
-            printf("now location: 0x%" PRIx64 " which is offset 0x%" PRIx64 ";\n", curMiniHdrNode->cur_mini_phdr.vaddr+offset, offset);
-            FoundLocationsNode *locations = searchRetInBuffer(buffer, readAmount, arch);
+            printf("now location: 0x%" PRIx64 " which is offset 0x%" PRIx64 ";\n", buf_vaddr, offset);
+            FoundLocationsNode *locations = searchRetInBuffer(buffer, readAmount, buf_vaddr, arch);
 
             offset += readAmount;            
 

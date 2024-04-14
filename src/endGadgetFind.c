@@ -26,7 +26,7 @@ static int initJMPIntel(ArchInfo *arch_p);
  * @return foundLocationsNode*, a linked list of all the location it found.
  *          returning NULL when none found in buffer.
  */
-FoundLocationsNode *searchRetInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p){
+FoundLocationsNode *searchRetInBuffer(char *buffer, size_t bufferSize, uint64_t buf_vaddr, ArchInfo *arch_p){
     /*
     An instruction is built from an opcode and operands.
     
@@ -52,8 +52,11 @@ FoundLocationsNode *searchRetInBuffer(char *buffer, size_t bufferSize, ArchInfo 
             continue; //Not found :(
         
         //Found :)
-        printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer);
+        printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld FINAL: 0x%" PRIx64 "\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer, buf_vaddr+location - buffer);
+        //each one I find I will write its address
     }
+
+
     return NULL;
 }
 
