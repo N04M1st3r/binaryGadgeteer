@@ -573,6 +573,7 @@ static void showSectionHdrFlags(Elf64_Shdr *sectionP){
  * 
  * @param filename      Filename of the elf.
  * @param entryP        Entry point, ULLONG_MAX(0xffff_ffff_ffff_ffff) if None (detect here).
+ * 
  * @return sucess, 0 if no errors, another if there were errors.
 */
 int initElfUtils(char const *filename, unsigned long long entryP){

@@ -44,7 +44,9 @@ FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, Arc
     */
 
     //For now I will do a bad search, I will make it better in the future!    
-    
+
+    FoundLocationsBufferNode *resultNode = NULL;
+
     MiniInstructionNode *curInstructionN_p =  arch_p->retEndings->start; 
     for(;curInstructionN_p != NULL; curInstructionN_p = curInstructionN_p->next){
         char *location = memmem(buffer, bufferSize, curInstructionN_p->instructionInfo.mnemonicOpcode, curInstructionN_p->instructionInfo.mnemonicOpcodeSize);
@@ -55,14 +57,21 @@ FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, Arc
         //printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld FINAL: 0x%" PRIx64 "\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer, buf_vaddr+location - buffer);
         //each one I find I will write its address
 
-        size_t offset = location - buffer;
-        FoundLocationsBufferNode *bufferLocationNode = (FoundLocationsBufferNode *) malloc(sizeof(FoundLocationsBufferNode));
+        FoundLocationsBufferNode *bufferLocationNode_p = (FoundLocationsBufferNode *) malloc(sizeof(FoundLocationsBufferNode));
+        if ( bufferLocationNode_p == NULL ){
+            err("Error in malloc, inside searchRetInBuffer, while allocating for bufferLocationNode_p, size %ld.", sizeof(FoundLocationsBufferNode));
+            FoundLocationsBufferNodeFree(resultNode);
+            return NULL;
+        }
+        bufferLocationNode_p->offset = location - buffer;
+        bufferLocationNode_p->miniInstructionInfo = curInstructionN_p->instructionInfo;
+        bufferLocationNode_p->next = resultNode;
 
-
+        resultNode = bufferLocationNode_p;
     }
 
 
-    return NULL;
+    return resultNode;
 }
 
 
@@ -182,9 +191,11 @@ ArchInfo *initArchInfo(const char *archName){
 
     if(!strcmp(archName, "x86")){
         arch_p->machine_mode = ZYDIS_MACHINE_MODE_LEGACY_32;
+        arch_p->stack_width = ZYDIS_STACK_WIDTH_32;
     }else if(!strcmp(archName, "x64")){
         /*"amd64", "x86_64", "x86-64"*/
         arch_p->machine_mode = ZYDIS_MACHINE_MODE_LONG_64;
+        arch_p->stack_width = ZYDIS_STACK_WIDTH_64;
     }else{
         err("Error, can't find machine mode for arch: %s\n", archName);
         free(arch_p);

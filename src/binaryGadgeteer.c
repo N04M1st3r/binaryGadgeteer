@@ -37,6 +37,7 @@
 #include <ctype.h>
 
 
+
 #define READ_AMOUNT 1000
 
 
@@ -56,6 +57,8 @@ static char const *VERSION_TEXT =
     "binaryGadgeteer: Version 1.0\n";
 
 
+static void parseOptionAddress(char const *address_s);
+static void readOptions(int argc, char **argv);
 
 static void parseOptionAddress(char const *address_s){
     char *endptr = NULL;
@@ -238,7 +241,7 @@ int main(int argc, char *argv[])
     Mini_ELF_Phdr_node *head = getAllExec_Mini_Phdr();
     printf("GOT;;;;;\n");
     if(head == NULL){
-        err("getAllExec_Mini_Phdr returned NULL, no program headers.");
+        err("Error, getAllExec_Mini_Phdr returned NULL, no program headers.");
         return 1;
     }
 
@@ -252,16 +255,26 @@ int main(int argc, char *argv[])
     char prefix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //before the offset.
 
     //Todo actually use getArch to see the arch
-    ArchInfo *arch; 
+    ArchInfo *arch_p; 
     if(is64Bit())
-        arch = initArchInfo("x64");
+        arch_p = initArchInfo("x64");
     else
-        arch = initArchInfo("x86");
+        arch_p = initArchInfo("x86");
     
-    if(arch == NULL){
+    if(arch_p == NULL){
         err("Some error getting the arch info :(");
-        exit(1);
+        return 2;
     }
+
+    ZydisDecoder decoder; //decoder
+    if (!ZYAN_SUCCESS(ZydisDecoderInit(&decoder, arch_p->machine_mode, arch_p->stack_width))){
+        err("some error initiating decoder.");
+        return 4;
+    }
+    
+    //the style of the assembly:
+    ZydisFormatter formatter;
+    ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
 
     while(curMiniHdrNode != NULL){
         
@@ -276,17 +289,78 @@ int main(int argc, char *argv[])
 
             if (readFileData(curMiniHdrNode->cur_mini_phdr.file_offset + offset, readAmount, buffer)){
                 err("error in readFileData at main.");
-                return 2;
+                return 3;
             }
 
             
             //foundLocations = searchInBuffer()
-            printf("now location: 0x%" PRIx64 " which is offset 0x%" PRIx64 ";\n", buf_vaddr, offset);
-            FoundLocationsBufferNode *locations = searchRetInBuffer(buffer, readAmount, arch);
+            //printf("now location: 0x%" PRIx64 " which is offset 0x%" PRIx64 ";\n", buf_vaddr, offset);
+            FoundLocationsBufferNode *locations = searchRetInBuffer(buffer, readAmount, arch_p);
             if(locations == NULL)
                 continue; //NON found, continue to next one.
             
-            printf("woho found :)");
+            //printf("woho found :)");
+            FoundLocationsBufferNode *tmp = locations;
+            for(; tmp != NULL; tmp = tmp->next){
+
+                uint64_t vaddr = tmp->offset+buf_vaddr;
+                ZyanUSize fullRetSize = tmp->miniInstructionInfo.additionSize + tmp->miniInstructionInfo.mnemonicOpcodeSize; //size_t
+                //printf("ret type: 0x%" PRIx8  ", vaddr: 0x%" PRIx64 ", total size: 0x%zx\n", tmp->miniInstructionInfo.mnemonicOpcode[0] ,vaddr, fullRetSize);
+                
+                //do this in another place.
+                
+
+
+                ZydisDecodedInstruction instruction;
+                
+                /*
+                Maybe I should not combine ZydisDecoderDecodeInstruction and ZydisFormatterFormatInstruction into ZydisDecoderDecodeFull?
+                atleast for the ret.
+                nah it is not a lot. it will improve but just a little.
+                */
+                /*
+                I will go some back and see if instruction.length is what I need.
+                */
+                ZyanU64 runtime_address;
+                char *bufferLocation;
+                ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+                char decodedBuffer[256];
+
+                for(int i = 0; i < ZYDIS_MAX_INSTRUCTION_LENGTH; i++){
+                    runtime_address = vaddr - i; //can also just --.
+                    bufferLocation = buffer+tmp->offset - i; //can also just --.
+                    
+                    if(!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, bufferLocation, fullRetSize + i, &instruction, operands))){
+                        //Cant decode this, no such instruction.
+                        continue;
+                    }
+
+                    //printf("instruction length: %ld\n", instruction.length);
+                    //I can already get everything I want about the instruction now.
+                    //printf("%d\n", instruction.length);
+                    
+                    
+                    /*if (instruction.length < i) //not including prefixes in this.
+                        break;
+                    else if(instruction.length > i)
+                        continue;*/
+                    if (i != 0)
+                        continue;
+                    
+                    printf("")
+                    //TODO: create a gadget linked list that I can add things to it and it has a point to the end(ret/jmp) and the start
+
+
+                    ZydisFormatterFormatInstruction(&formatter, &instruction, operands,
+                instruction.operand_count_visible, decodedBuffer, sizeof(decodedBuffer), (ZyanU64)(buffer+tmp->offset), ZYAN_NULL);
+                    
+                    
+                    
+                    printf("0x%" PRIx64 ": %s    opcode: 0x%hhx, operand_count: 0x%hhx \n", runtime_address ,decodedBuffer, instruction.opcode, instruction.operand_width, instruction.length);
+
+                    runtime_address += instruction.length;
+                }
+            }
 
             FoundLocationsBufferNodeFree(locations);
 
@@ -304,8 +378,8 @@ int main(int argc, char *argv[])
 
 
     printf("freeing:\n");
-    freeArchInfo(arch);
-    arch = (ArchInfo *)NULL;
+    freeArchInfo(arch_p);
+    arch_p = (ArchInfo *)NULL;
 
     freeAll_Mini_Phdr_nodes(head);
     head = (Mini_ELF_Phdr_node *)NULL;

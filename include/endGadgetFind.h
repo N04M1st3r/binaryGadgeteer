@@ -9,6 +9,7 @@
 //maybe create a file just for this:
 typedef struct FoundLocationsBufferNode{
     size_t offset; //offset inside buffer.
+    MiniInstruction miniInstructionInfo;
     struct FoundLocationsBufferNode *next;
 } FoundLocationsBufferNode;
 
@@ -17,6 +18,7 @@ typedef struct FoundLocationsBufferNode{
 typedef struct ArchInfo
 {
     ZydisMachineMode machine_mode;
+    ZydisStackWidth stack_width;
 
     //some important assembly opcodes to be saved:
     MiniInstructionLinkedList *retEndings; 
