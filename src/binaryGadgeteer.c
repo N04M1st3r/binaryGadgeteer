@@ -267,9 +267,9 @@ int main(int argc, char *argv[])
         
         //offset from beggening
         uint64_t offset = 0;
-
-        while (offset < curMiniHdrNode->cur_mini_phdr.size){
-            uint64_t readAmount = curMiniHdrNode->cur_mini_phdr.size - offset;
+        uint64_t readAmount;
+        for (;offset < curMiniHdrNode->cur_mini_phdr.size; offset += readAmount){
+            readAmount = curMiniHdrNode->cur_mini_phdr.size - offset;
             readAmount = readAmount > READ_AMOUNT ? READ_AMOUNT : readAmount;
 
             uint64_t buf_vaddr = curMiniHdrNode->cur_mini_phdr.vaddr + offset;
@@ -282,9 +282,13 @@ int main(int argc, char *argv[])
             
             //foundLocations = searchInBuffer()
             printf("now location: 0x%" PRIx64 " which is offset 0x%" PRIx64 ";\n", buf_vaddr, offset);
-            FoundLocationsNode *locations = searchRetInBuffer(buffer, readAmount, buf_vaddr, arch);
+            FoundLocationsBufferNode *locations = searchRetInBuffer(buffer, readAmount, arch);
+            if(locations == NULL)
+                continue; //NON found, continue to next one.
+            
+            printf("woho found :)");
 
-            offset += readAmount;            
+            FoundLocationsBufferNodeFree(locations);
 
         }
 

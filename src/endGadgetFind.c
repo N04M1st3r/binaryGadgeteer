@@ -23,10 +23,10 @@ static int initJMPIntel(ArchInfo *arch_p);
  * @param buffer, the buffer.
  * @param bufferSize, the bufferSize
  * 
- * @return foundLocationsNode*, a linked list of all the location it found.
+ * @return FoundLocationsBufferNode*, a linked list of all the location it found.
  *          returning NULL when none found in buffer.
  */
-FoundLocationsNode *searchRetInBuffer(char *buffer, size_t bufferSize, uint64_t buf_vaddr, ArchInfo *arch_p){
+FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p){
     /*
     An instruction is built from an opcode and operands.
     
@@ -52,13 +52,36 @@ FoundLocationsNode *searchRetInBuffer(char *buffer, size_t bufferSize, uint64_t 
             continue; //Not found :(
         
         //Found :)
-        printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld FINAL: 0x%" PRIx64 "\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer, buf_vaddr+location - buffer);
+        //printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld FINAL: 0x%" PRIx64 "\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer, buf_vaddr+location - buffer);
         //each one I find I will write its address
+
+        size_t offset = location - buffer;
+        FoundLocationsBufferNode *bufferLocationNode = (FoundLocationsBufferNode *) malloc(sizeof(FoundLocationsBufferNode));
+
+
     }
 
 
     return NULL;
 }
+
+
+/**
+ * Frees Location buffer node.
+ * 
+ * @param locationsBufferNode, the node to free it and the ones after it.
+ * 
+ * @note it frees a malloced node and his other ones, make sure not to touch them again.
+*/
+void FoundLocationsBufferNodeFree(FoundLocationsBufferNode *locationsBufferNode){
+    FoundLocationsBufferNode *tmp;
+    while(locationsBufferNode != NULL){
+        tmp = locationsBufferNode->next;
+        free(locationsBufferNode);
+        locationsBufferNode = tmp;
+    }
+}
+
 
 /**
  * Initilizes the retEndings inside arch. (arch.retEndings)

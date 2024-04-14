@@ -1,4 +1,4 @@
-#include "miniInstructionList.h"
+#include "miniInstructionLinkedList.h"
 #include "costumErrors.h"
 
 #include <stdlib.h>
