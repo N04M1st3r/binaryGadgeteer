@@ -1,36 +1,37 @@
 #include "miniInstructionList.h"
 #include "costumErrors.h"
 
+#include <stdlib.h>
+
+static void MiniInstructionLinkedListInit(MiniInstructionLinkedList *);
+
 /**
- * Appending miniInstruction to miniInstructionLL_p
+ * Adding miniInstruction to miniInstructionLL_p, will add to the start.
  * 
- * @param miniInstruction, the mini instruction to append.
- * @param miniInstructionLL_p
+ * @param mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], miniInstruction mnemonic part of the opcode.
+ * @param mnemonicOpcodeSize, the opcode mnemonic size (max is MAX_MEMONIC_OPCODE_LEN/3).
+ * @param additionSize, the addition size that needs to be added for the opcode (the operands).
+ * @param miniInstructionLL_p, mini instruction linked list pointer.
  * 
  * @return 0 on sucess. -1 and such on error.
 */
-int miniInstructionLinkedListAppend(MiniInstructionLinkedList *miniInstructionLL_p, MiniInstruction *miniInstruction){
-    (miniInstructionLL_p->size)++;
-    
-}
-
-
-/**
- * Creating (not initilizing) MiniInstruction. (mallocing) 
- * 
- * @return A malloced MiniInstruction pointer that is initilized to 0.
- *          If error returns NULL.
- * 
- * @note !!!THIS IS MALLOCED, REMEMBER TO FREE, note that miniInstructionLinkedListFreeAll also free's them
-*/
-MiniInstruction *miniInstructionCreate(void){
-    MiniInstruction *miniInstruction = (MiniInstruction *)malloc(sizeof(MiniInstruction));
-    if(miniInstruction == NULL){
-        err("Error, Malloc for miniInstruction failed inside MiniInstructionCreate.\n");
-        return NULL;
+int miniInstructionLinkedListAdd(MiniInstructionLinkedList *miniInstructionLL_p, char mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize){
+    MiniInstructionNode *newStart = (MiniInstructionNode *)malloc(sizeof(MiniInstructionNode));
+    if (newStart == NULL){
+        err("Error in Malloc inside miniInstructionLinkedListAdd, for newStart of size %ld.", sizeof(MiniInstructionNode));
+        return 1;
     }
+    
+    newStart->instructionInfo.additionSize = additionSize;
+    newStart->instructionInfo.mnemonicOpcodeSize = mnemonicOpcodeSize;
+    memcpy(newStart->instructionInfo.mnemonicOpcode, mnemonicOpcode, MAX_MEMONIC_OPCODE_LEN);
 
-    return miniInstruction;
+    newStart->next = miniInstructionLL_p->start;
+
+    miniInstructionLL_p->start = newStart;
+    (miniInstructionLL_p->size)++;
+
+    return 0;
 }
 
 /**
@@ -38,7 +39,7 @@ MiniInstruction *miniInstructionCreate(void){
  * 
  *  @return a pointer to mini instruction linked list. NULL if error.
  * 
- *  @note !!!!in the end call miniInstructionLinkedListFreeAll!!!! (or miniInstructionLinkedListFreeNoInstructionInfo, depending on how you appended them)
+ *  @note !!!!in the end call miniInstructionLinkedListFreeRegular!!!!
 */
 MiniInstructionLinkedList *miniInstructionLinkedListCreate(void){
     MiniInstructionLinkedList *miniInstructionLL_p = (MiniInstructionLinkedList *)malloc(sizeof(MiniInstructionLinkedList));
@@ -59,46 +60,19 @@ MiniInstructionLinkedList *miniInstructionLinkedListCreate(void){
 */
 static void MiniInstructionLinkedListInit(MiniInstructionLinkedList *miniInstructionLL_p){
     miniInstructionLL_p->start = NULL;
-    miniInstructionLL_p->end = NULL;
     miniInstructionLL_p->size = 0;
 }
-
-/**
- * Frees miniInstructionLL_p, and everything inside it.
- * 
- * @param miniInstructionLL_p, MiniInstructionLinkedList to free
- * 
- * @note assuming instructions a are also malloced
-*/
-void miniInstructionLinkedListFreeAll(MiniInstructionLinkedList *miniInstructionLL_p){
-    
-    MiniInstructionNode *curNode = miniInstructionLL_p->start;
-    MiniInstructionNode *tmp;
-    while(curNode != NULL){
-        tmp = curNode->next;
-
-        free(curNode->instructionInfo);
-        free(curNode);
-
-        curNode = tmp;
-    }
-    
-    //miniInstructionLL_p->start = NULL;
-    //miniInstructionLL_p->end = NULL;
-    //miniInstructionLL_p->size = 0;
-
-    free(miniInstructionLL_p);
-}
-
 
 /**
  * Frees miniInstructionLL_p, and everything inside it except instructionInfo and stuff in it.
  * 
  * @param miniInstructionLL_p, MiniInstructionLinkedList to free
  * 
- * @note assuming instructions a are also malloced
+ * @note assuming instructions are not malloced (like in miniInstructionLinkedListAdd)
+ * 
+ * @note USING THIS!
 */
-void miniInstructionLinkedListFreeNoInstructionInfo(MiniInstructionLinkedList *miniInstructionLL_p){
+void miniInstructionLinkedListFreeRegular(MiniInstructionLinkedList *miniInstructionLL_p){
     
     MiniInstructionNode *curNode = miniInstructionLL_p->start;
     MiniInstructionNode *tmp;
@@ -110,7 +84,6 @@ void miniInstructionLinkedListFreeNoInstructionInfo(MiniInstructionLinkedList *m
     }
     
     //miniInstructionLL_p->start = NULL;
-    //miniInstructionLL_p->end = NULL;
     //miniInstructionLL_p->size = 0;
 
     free(miniInstructionLL_p);

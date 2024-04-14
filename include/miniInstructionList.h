@@ -1,5 +1,7 @@
 #include <inttypes.h>
+#include <stdio.h>
 
+#define MAX_MEMONIC_OPCODE_LEN 3
 
 /*
 MiniInstruction ideas to improve and explanation
@@ -27,12 +29,13 @@ Example 2:
     will be saved as:
     {{0xC3, 0, 0}, 1, 0};
 
+
 */
 typedef struct MiniInstruction{ //saving the minimum info needed on the instruction
-    char mnemonicOpcode[3];       /*Max mnemonicOpcode/startOpcode is 3 (according to intel manual), start opcode*/
+    uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN];       /*Max mnemonicOpcode/startOpcode length is 3 (according to intel manual), start opcode*/
     uint8_t mnemonicOpcodeSize;
     uint8_t additionSize;
-} MiniInstruction;
+} MiniInstruction; //YOU ARE NOT SUPPOUS TO CREATE OBJECT OF THIS, just use miniInstructionLinkedListFreeNoInstructionInfo
 
 typedef struct MiniInstructionNode{
     MiniInstruction instructionInfo;
@@ -41,6 +44,14 @@ typedef struct MiniInstructionNode{
 
 typedef struct MiniInstructionLinkedList{
     MiniInstructionNode *start;
-    MiniInstructionNode *end;
     size_t size;
 } MiniInstructionLinkedList;
+
+
+int miniInstructionLinkedListAdd(MiniInstructionLinkedList *, char mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize);
+
+MiniInstructionLinkedList *miniInstructionLinkedListCreate(void);
+
+//use this with miniInstructionLinkedListAdd.
+void miniInstructionLinkedListFreeRegular(MiniInstructionLinkedList *);
+

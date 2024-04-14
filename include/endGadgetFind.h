@@ -1,3 +1,5 @@
+#include "miniInstructionList.h"
+
 #include <inttypes.h>
 #include <Zydis/Zydis.h>
 #include <stdbool.h>
@@ -12,8 +14,8 @@ typedef struct ArchInfo
     ZydisMachineMode machine_mode;
 
     //some important assembly opcodes to be saved:
-    MiniInstruction *retEndings; 
-    MiniInstruction *jmpEndings;
+    MiniInstructionLinkedList *retEndings; 
+    MiniInstructionLinkedList *jmpEndings;
 } ArchInfo;
 
 
