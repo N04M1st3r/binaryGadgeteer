@@ -694,10 +694,10 @@ int getEndiannessEncoding(void){
 /**
  * Returns entry point of the program.
  * 
- * @return entry point of executable.
+ * @return entry point of executable. (Elf64_Addr, uint64_t)
  * @note 0 is None.
 */
-unsigned long long getEntryPoint(void){
+uint64_t getEntryPoint(void){
   return elf_Ehdr.e_entry;
 }
 

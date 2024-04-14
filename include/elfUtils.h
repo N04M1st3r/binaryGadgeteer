@@ -25,7 +25,7 @@ int cleanElfUtils(void);
 const char *getArch(void);
 bool is64Bit(void);
 
-unsigned long long getEntryPoint(void);
+uint64_t getEntryPoint(void); //(Elf64_Addr, uint64_t)
 void showSectionsHeaders(void);
 void showProgramHeaders(void);
 

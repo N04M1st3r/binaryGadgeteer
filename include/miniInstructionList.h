@@ -48,7 +48,7 @@ typedef struct MiniInstructionLinkedList{
 } MiniInstructionLinkedList;
 
 
-int miniInstructionLinkedListAdd(MiniInstructionLinkedList *, char mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize);
+int miniInstructionLinkedListAdd(MiniInstructionLinkedList *, uint8_t mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize);
 
 MiniInstructionLinkedList *miniInstructionLinkedListCreate(void);
 

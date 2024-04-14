@@ -19,13 +19,12 @@ typedef struct ArchInfo
 } ArchInfo;
 
 
-FoundLocationsNode *searchRetInBuffer(char *buffer, uint64_t bufferSize, ArchInfo *arch);
+FoundLocationsNode *searchRetInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p);
 
 //will maybe expand this function in the future
 ArchInfo *initArchInfo(const char *archName);
 
-void freeArchInfo(ArchInfo *arch);
-
+void freeArchInfo(ArchInfo *arch_p);
 
 
 //maybe change name to branchFind

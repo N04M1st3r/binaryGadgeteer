@@ -15,7 +15,7 @@ static void MiniInstructionLinkedListInit(MiniInstructionLinkedList *);
  * 
  * @return 0 on sucess. -1 and such on error.
 */
-int miniInstructionLinkedListAdd(MiniInstructionLinkedList *miniInstructionLL_p, char mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize){
+int miniInstructionLinkedListAdd(MiniInstructionLinkedList *miniInstructionLL_p, uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize){
     MiniInstructionNode *newStart = (MiniInstructionNode *)malloc(sizeof(MiniInstructionNode));
     if (newStart == NULL){
         err("Error in Malloc inside miniInstructionLinkedListAdd, for newStart of size %ld.", sizeof(MiniInstructionNode));

@@ -1,4 +1,5 @@
 #define _FILE_OFFSET_BITS 64
+#define _GNU_SOURCE         /* for memmem, the bad search */
 
 //to do stuff with the elf
 #include "elfUtils.h"
@@ -220,18 +221,15 @@ int main(int argc, char *argv[])
         err("error inside initElfUtils at main.");
         return 1;
     }
-    unsigned long long entry = getEntryPoint();
-    printf("hello %llx \n", entry);
-
-    entry = getEntryPoint();
-    printf("hello %llx \n", entry);
-    printf("%s\n", getArch());
+    uint64_t entry = getEntryPoint(); //(Elf64_Addr, uint64_t)
+    printf("entry: 0x%" PRIx64 "\n", entry);
+    printf("arch: %s\n", getArch());
 
     //endianess:
     //printf("little endian(1), big(2): %d\n", getEndiannessEncoding());
 
-    //showSectionsHeaders(); //X showScanSections();
-    showProgramHeaders();
+    //showSectionsHeaders(); 
+    //showProgramHeaders();
 
     printf("getting:\n");
 
@@ -254,7 +252,6 @@ int main(int argc, char *argv[])
     char prefix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //before the offset.
 
     //Todo actually use getArch to see the arch
-    printf("arch: %s", getArch());
     ArchInfo *arch; 
     if(is64Bit())
         arch = initArchInfo("x64");
@@ -282,9 +279,10 @@ int main(int argc, char *argv[])
 
             
             //foundLocations = searchInBuffer()
+            printf("now location: 0x%" PRIx64 " which is offset 0x%" PRIx64 ";\n", curMiniHdrNode->cur_mini_phdr.vaddr+offset, offset);
             FoundLocationsNode *locations = searchRetInBuffer(buffer, readAmount, arch);
 
-            
+            offset += readAmount;            
 
         }
 

@@ -1,3 +1,5 @@
+#define _GNU_SOURCE         /* for memmem, the bad search  */
+
 #include "endGadgetFind.h"
 
 #include "costumErrors.h"
@@ -5,6 +7,9 @@
 #include <stdlib.h>
 
 #include <stdio.h>
+
+//for the bad search:
+#include <string.h>
 
 static int initRETIntel(ArchInfo *arch_p);
 static int initJMPIntel(ArchInfo *arch_p);
@@ -21,7 +26,7 @@ static int initJMPIntel(ArchInfo *arch_p);
  * @return foundLocationsNode*, a linked list of all the location it found.
  *          returning NULL when none found in buffer.
  */
-FoundLocationsNode *searchRetInBuffer(char *buffer, uint64_t bufferSize, ArchInfo *arch){
+FoundLocationsNode *searchRetInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p){
     /*
     An instruction is built from an opcode and operands.
     
@@ -36,13 +41,19 @@ FoundLocationsNode *searchRetInBuffer(char *buffer, uint64_t bufferSize, ArchInf
     (ropper also does that, I checked XD)
     (https://github.dev/sashs/Ropper/blob/master/ropper/gadget.py search for self._pprs)
     and self._endings
-
     */
 
-   
-
-
-
+    //For now I will do a bad search, I will make it better in the future!    
+    
+    MiniInstructionNode *curInstructionN_p =  arch_p->retEndings->start; 
+    for(;curInstructionN_p != NULL; curInstructionN_p = curInstructionN_p->next){
+        char *location = memmem(buffer, bufferSize, curInstructionN_p->instructionInfo.mnemonicOpcode, curInstructionN_p->instructionInfo.mnemonicOpcodeSize);
+        if (location == NULL)
+            continue; //Not found :(
+        
+        //Found :)
+        printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer);
+    }
     return NULL;
 }
 
@@ -92,11 +103,11 @@ static int initRETIntel(ArchInfo *arch_p){
     
 
     int error = 0;
-    //arrays are of size MAX_MEMONIC_OPCODE_LEN(3)
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3}, 1, 0);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCB}, 1, 0);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC2}, 1, 2);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCA}, 1, 2);
+    //arrays are of size MAX_MEMONIC_OPCODE_LEN(3) 
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3, 0, 0}, 1, 0);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCB, 0, 0}, 1, 0);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC2, 0, 0}, 1, 2);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCA, 0, 0}, 1, 2);
 
     //LL    mnemonicOpcode[3]   mnemonicOpcodeSize    additionSize
     if (error){
@@ -171,16 +182,16 @@ ArchInfo *initArchInfo(const char *archName){
     return arch_p;
 }
 
-void freeArchInfo(ArchInfo *arch){
-    if (arch != NULL){
-        if (arch->retEndings != NULL){
-            miniInstructionLinkedListFreeRegular(arch->retEndings);
-            arch->retEndings = NULL; //just in case, there is no must to do that.
+void freeArchInfo(ArchInfo *arch_p){
+    if (arch_p != NULL){
+        if (arch_p->retEndings != NULL){
+            miniInstructionLinkedListFreeRegular(arch_p->retEndings);
+            arch_p->retEndings = NULL; //just in case, there is no must to do that.
         }
-        if (arch->jmpEndings != NULL){
-            miniInstructionLinkedListFreeRegular(arch->jmpEndings);
-            arch->jmpEndings = NULL; //Just in case, there is no must to do that.
+        if (arch_p->jmpEndings != NULL){
+            miniInstructionLinkedListFreeRegular(arch_p->jmpEndings);
+            arch_p->jmpEndings = NULL; //Just in case, there is no must to do that.
         }
-        free(arch);
+        free(arch_p);
     }
 }
