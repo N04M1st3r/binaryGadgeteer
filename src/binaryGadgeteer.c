@@ -9,6 +9,8 @@
 
 #include "endGadgetFind.h"
 
+#include "gadget.h"
+
 //to print
 #include <stdio.h>
 
@@ -38,7 +40,7 @@
 
 
 
-#define READ_AMOUNT 1000
+#define READ_AMOUNT 10000
 
 
 
@@ -236,13 +238,17 @@ int main(int argc, char *argv[])
 
     printf("getting:\n");
 
-    char buffer[READ_AMOUNT]; //allocate this on the heap later (because it is going to be super big)
-
+    char *buffer = (char *) malloc(READ_AMOUNT); //on the heap because it is super big.
+    if (buffer == NULL){
+        err("Error while mallocing for buffer, inside main. of size  %zu .", READ_AMOUNT);
+        return 1;
+    }
+    
     Mini_ELF_Phdr_node *head = getAllExec_Mini_Phdr();
     printf("GOT;;;;;\n");
     if(head == NULL){
         err("Error, getAllExec_Mini_Phdr returned NULL, no program headers.");
-        return 1;
+        return 2;
     }
 
     Mini_ELF_Phdr_node *curMiniHdrNode = head;
@@ -252,7 +258,8 @@ int main(int argc, char *argv[])
     // (and take from last one) ZYDIS_MAX_INSTRUCTION_LENGTH
     
     //implement this later!
-    char prefix[ZYDIS_MAX_INSTRUCTION_LENGTH]; //before the offset.
+    #define searchAheadInstructions 2
+    size_t prefixSize = ZYDIS_MAX_INSTRUCTION_LENGTH*searchAheadInstructions; //before the offset.
 
     //Todo actually use getArch to see the arch
     ArchInfo *arch_p; 
@@ -263,7 +270,7 @@ int main(int argc, char *argv[])
     
     if(arch_p == NULL){
         err("Some error getting the arch info :(");
-        return 2;
+        return 3;
     }
 
     ZydisDecoder decoder; //decoder
@@ -276,20 +283,30 @@ int main(int argc, char *argv[])
     ZydisFormatter formatter;
     ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
 
+    initDecoderAndFormatter(&decoder, &formatter);
+    
+    gadgetGeneralNode *allGadgetsGeneralNode = gadgetGeneralNodeCreate((gadgetGeneral) {.addr_file=0, .checked=true, .length=0, .vaddr=0, .first=NULL});
+    if (allGadgetsGeneralNode == NULL){
+        err("Error while getting allGadgetsGeneralNode at gadgetGeneralNodeCreate in main.");
+        return 5;
+    }
+
+    //TODO: implement so it will go a little back when checking! MUST!
     while(curMiniHdrNode != NULL){
-        
+        //zeroing it out so it wouldnt say there is an instruction that there isn't
         //offset from beggening
         uint64_t offset = 0;
-        uint64_t readAmount;
+        size_t readAmount;
         for (;offset < curMiniHdrNode->cur_mini_phdr.size; offset += readAmount){
             readAmount = curMiniHdrNode->cur_mini_phdr.size - offset;
             readAmount = readAmount > READ_AMOUNT ? READ_AMOUNT : readAmount;
 
             uint64_t buf_vaddr = curMiniHdrNode->cur_mini_phdr.vaddr + offset;
-
-            if (readFileData(curMiniHdrNode->cur_mini_phdr.file_offset + offset, readAmount, buffer)){
+            uint64_t buf_fileOffset = curMiniHdrNode->cur_mini_phdr.file_offset + offset;
+            //printf("reading.\n");
+            if (readFileData( buf_fileOffset , readAmount, buffer)){
                 err("error in readFileData at main.");
-                return 3;
+                return 6;
             }
 
             
@@ -299,72 +316,36 @@ int main(int argc, char *argv[])
             if(locations == NULL)
                 continue; //NON found, continue to next one.
             
+            //now here I will add them to all my gadgets
+
             //printf("woho found :)");
-            FoundLocationsBufferNode *tmp = locations;
-            for(; tmp != NULL; tmp = tmp->next){
+            //printf("cur: 0x%" PRIx64 "\n", buf_vaddr);
+            FoundLocationsBufferNode *curBranchInstructionLocation = locations;
 
-                uint64_t vaddr = tmp->offset+buf_vaddr;
-                ZyanUSize fullRetSize = tmp->miniInstructionInfo.additionSize + tmp->miniInstructionInfo.mnemonicOpcodeSize; //size_t
-                //printf("ret type: 0x%" PRIx8  ", vaddr: 0x%" PRIx64 ", total size: 0x%zx\n", tmp->miniInstructionInfo.mnemonicOpcode[0] ,vaddr, fullRetSize);
+            int debugDELLATER = 0;
+            for(; curBranchInstructionLocation != NULL; curBranchInstructionLocation = curBranchInstructionLocation->next){
+                if(++debugDELLATER == 5)
+                    exit(90);
+                printf("%d\n", debugDELLATER);
                 
-                //do this in another place.
-                
 
-
-                ZydisDecodedInstruction instruction;
-                
-                /*
-                Maybe I should not combine ZydisDecoderDecodeInstruction and ZydisFormatterFormatInstruction into ZydisDecoderDecodeFull?
-                atleast for the ret.
-                nah it is not a lot. it will improve but just a little.
-                */
-                /*
-                I will go some back and see if instruction.length is what I need.
-                */
-                ZyanU64 runtime_address;
-                char *bufferLocation;
-                ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
-                char decodedBuffer[256];
-
-                for(int i = 0; i < ZYDIS_MAX_INSTRUCTION_LENGTH; i++){
-                    runtime_address = vaddr - i; //can also just --.
-                    bufferLocation = buffer+tmp->offset - i; //can also just --.
-                    
-                    if(!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, bufferLocation, fullRetSize + i, &instruction, operands))){
-                        //Cant decode this, no such instruction.
-                        continue;
-                    }
-
-                    //printf("instruction length: %ld\n", instruction.length);
-                    //I can already get everything I want about the instruction now.
-                    //printf("%d\n", instruction.length);
-                    
-                    
-                    /*if (instruction.length < i) //not including prefixes in this.
-                        break;
-                    else if(instruction.length > i)
-                        continue;*/
-                    if (i != 0)
-                        continue;
-                    
-                    printf("")
-                    //TODO: create a gadget linked list that I can add things to it and it has a point to the end(ret/jmp) and the start
-
-
-                    ZydisFormatterFormatInstruction(&formatter, &instruction, operands,
-                instruction.operand_count_visible, decodedBuffer, sizeof(decodedBuffer), (ZyanU64)(buffer+tmp->offset), ZYAN_NULL);
-                    
-                    
-                    
-                    printf("0x%" PRIx64 ": %s    opcode: 0x%hhx, operand_count: 0x%hhx \n", runtime_address ,decodedBuffer, instruction.opcode, instruction.operand_width, instruction.length);
-
-                    runtime_address += instruction.length;
+                gadgetGeneralNode *curGadgetGeneralNode = expandInstructionDown(buffer, buf_vaddr, buf_fileOffset, readAmount, curBranchInstructionLocation, ZYDIS_MNEMONIC_RET, 3);
+                if (curGadgetGeneralNode == NULL){
+                    err("Error in expandInstructionDown, into curGadgetGeneralNode inside main.");
+                    return 7;
                 }
+                printf("showing:\n");
+                gadgetGeneralNodeShowAll(curGadgetGeneralNode);
+
+                
+                
             }
 
             FoundLocationsBufferNodeFree(locations);
 
         }
+
+        
 
         
 
@@ -377,7 +358,11 @@ int main(int argc, char *argv[])
 
 
 
-    printf("freeing:\n");
+    printf("freeing\n");
+    gadgetGeneralNodeFreeAll(allGadgetsGeneralNode);
+
+    free(buffer);
+
     freeArchInfo(arch_p);
     arch_p = (ArchInfo *)NULL;
 
@@ -387,7 +372,7 @@ int main(int argc, char *argv[])
     if(cleanElfUtils()){
         err("Error cleaning elfUtils, in cleanElfUtils inside main.\n");
     }
-
+    printf("finished freeing\n");
     exit(0);
 
     //I THINK: using zydis v4.0.0 (or the other version 4.0.?)

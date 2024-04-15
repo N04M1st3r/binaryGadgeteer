@@ -114,6 +114,10 @@ static void copyElf32_EhdrToElf64_Ehdr(Elf32_Ehdr *elf32_Ehdr_p, Elf64_Ehdr *elf
 
 /**
  * Copies all values in elf32_Shdr_p to elf64_Shdr_p.
+ * 
+ * @param elf32_Shdr_p Elf32_Shdr * to copy from
+ * @param elf64_Shdr_p Elf64_Shdr * to copy to
+ * 
 */
 static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *elf32_Shdr_p, Elf64_Shdr *elf64_Shdr_p){
   elf64_Shdr_p->sh_name = elf32_Shdr_p->sh_name;
@@ -131,6 +135,10 @@ static void copyElf32_ShdrToElf64_Shdr(Elf32_Shdr *elf32_Shdr_p, Elf64_Shdr *elf
 
 /**
  * Copies all values in elf32_Phdr_p to elf64_Phdr_p.
+ * 
+ * @param elf32_Phdr_p Elf32_Phdr * to copy from.
+ * @param elf64_Phdr_p Elf64_Phdr * to copy to.
+ * 
 */
 static void copyElf32_PhdrToElf64_Phdr(Elf32_Phdr *elf32_Phdr_p, Elf64_Phdr *elf64_Phdr_p){
   elf64_Phdr_p->p_type   = elf32_Phdr_p->p_type;
@@ -223,7 +231,7 @@ static int setupBits(void){
 /**
  * Gets the section name from String table using Elf32_Shdr.sh_name
  * 
- * @param sectionHdrP, section header pointer.
+ * @param sectionHdrP section header pointer.
  * 
  * @return section name (pointer).
  * 
@@ -276,8 +284,8 @@ static int initStringTable(void){
 /**
  * Gets the section header at file offset sectionHdrOff of size elf_Ehdr.e_shentsize, into result_Shdr.
  * 
- * @param result_Shdr, where the resulting section header will go.
- * @param sectionHdrOff,  section header offset in the file.
+ * @param result_Shdr where the resulting section header will go.
+ * @param sectionHdrOff  section header offset in the file.
  * 
  * @return 0 is sucess, anything else if error.
  * 
@@ -313,8 +321,8 @@ static int getSectionHdrByOffset(Elf64_Shdr *result_Shdr, Elf64_Off sectionHdrOf
 /**
  * Gets the program header at file offset programHdrOff of size elf_Ehdr.e_phentsize, into result_Phdr.
  * 
- * @param result_Phdr, where the resulting program header will go.
- * @param programHdrOff,  program header offset in the file.
+ * @param result_Phdr where the resulting program header will go.
+ * @param programHdrOff  program header offset in the file.
  * 
  * @return 0 is sucess, anything else if error.
  * 
@@ -352,8 +360,8 @@ static int getProgramHdrByOffset(Elf64_Phdr *result_Phdr, Elf64_Off programHdrOf
  * it is of size elf_Ehdr.e_shentsize, into result_Shdr.
  * 
  * 
- * @param result_Shdr, where the resulting section header will go.
- * @param section_index,  section header index in the section table array.
+ * @param result_Shdr where the resulting section header will go.
+ * @param section_index  section header index in the section table array.
  * 
  * @return 0 is sucess, anything else if error.
  * 
@@ -375,7 +383,7 @@ static int getSectionHdrByIndex(Elf64_Shdr *result_Shdr, Elf64_Xword section_ind
 /**
  * Prints the section header at sectionHdrOff of size sectionHdrSize info into stdout.
  * 
- * @param sectionHdrOff,  section header offset in the file.
+ * @param sectionHdrOff  section header offset in the file.
  * 
  * @note if error writes there was an error, does not return anything special.
 */
@@ -415,7 +423,7 @@ static void showSectionHdr(Elf64_Off sectionHdrOff){
 /**
  * Prints the program header's flags in a nice way.
  * 
- * @param programP, the program's pointer.
+ * @param programP the program's pointer.
  * 
  * this like file premmision in linux,
  * 1 for exec       (PF_X)
@@ -445,7 +453,7 @@ static void showProgramHdrFlags(Elf64_Phdr *programHdrP){
 /**
  * return the program header's type in char* in a nice way.
  * 
- * @param programP, the program's pointer.
+ * @param programP the program's pointer.
  * 
  * @return name of type of program header (char*)
  * 
@@ -516,7 +524,7 @@ static const char *getProgramHdrType(Elf64_Phdr *programHdrP){
 /**
  * Prints the section header's flags in a nice way.
  * 
- * @param sectionP, the section's header pointer.
+ * @param sectionP the section's header pointer.
  * 
 */
 static void showSectionHdrFlags(Elf64_Shdr *sectionP){
@@ -846,7 +854,7 @@ void showProgramHeaders(void){ //TODO: do this
 /**
  * Prints the program header at programHdrOff of size programHdrSize info into stdout.
  * 
- * @param programHdrOff,  program header offset in the file.
+ * @param programHdrOff  program header offset in the file.
  * 
  * @note if error writes there was an error, does not return anything special.
 */
@@ -904,9 +912,9 @@ void freeAll_Mini_Phdr_nodes(Mini_ELF_Phdr_node *head){
 /**
  * Reads from file from from size bytes into buffer.
  * 
- * @param from, location to start reading in file.
- * @param size, amount to read from the file.
- * @param buffer, buffer to read into.
+ * @param from location to start reading in file.
+ * @param size amount to read from the file.
+ * @param buffer buffer to read into.
  * 
  * @return returns 0 on success, else something else.(-1 for example)
  * 

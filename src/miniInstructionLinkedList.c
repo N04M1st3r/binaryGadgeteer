@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-static void MiniInstructionLinkedListInit(MiniInstructionLinkedList *);
+static void MiniBranchInstructionLinkedListInit(MiniBranchInstructionLinkedList *);
 
 /**
  * Adding miniInstruction to miniInstructionLL_p, will add to the start.
@@ -15,10 +15,10 @@ static void MiniInstructionLinkedListInit(MiniInstructionLinkedList *);
  * 
  * @return 0 on sucess. -1 and such on error.
 */
-int miniInstructionLinkedListAdd(MiniInstructionLinkedList *miniInstructionLL_p, uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize){
-    MiniInstructionNode *newStart = (MiniInstructionNode *)malloc(sizeof(MiniInstructionNode));
+int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *miniInstructionLL_p, uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize){
+    MiniBranchInstructionNode *newStart = (MiniBranchInstructionNode *)malloc(sizeof(MiniBranchInstructionNode));
     if (newStart == NULL){
-        err("Error in Malloc inside miniInstructionLinkedListAdd, for newStart of size %ld.", sizeof(MiniInstructionNode));
+        err("Error in Malloc inside miniInstructionLinkedListAdd, for newStart of size %ld.", sizeof(MiniBranchInstructionNode));
         return 1;
     }
     
@@ -35,20 +35,20 @@ int miniInstructionLinkedListAdd(MiniInstructionLinkedList *miniInstructionLL_p,
 }
 
 /**
- * Creating and initilizing MiniInstructionLinkedList. (allocating with malloc, on heap)
+ * Creating and initilizing MiniBranchInstructionLinkedList. (allocating with malloc, on heap)
  * 
  *  @return a pointer to mini instruction linked list. NULL if error.
  * 
  *  @note !!!!in the end call miniInstructionLinkedListFreeRegular!!!!
 */
-MiniInstructionLinkedList *miniInstructionLinkedListCreate(void){
-    MiniInstructionLinkedList *miniInstructionLL_p = (MiniInstructionLinkedList *)malloc(sizeof(MiniInstructionLinkedList));
+MiniBranchInstructionLinkedList *miniInstructionLinkedListCreate(void){
+    MiniBranchInstructionLinkedList *miniInstructionLL_p = (MiniBranchInstructionLinkedList *)malloc(sizeof(MiniBranchInstructionLinkedList));
     if (miniInstructionLL_p == NULL){
         err("Error, Malloc for miniInstructionLL_p failed inside miniInstructionLinkedListCreate.\n");
         return NULL;
     }
     
-    MiniInstructionLinkedListInit(miniInstructionLL_p);
+    MiniBranchInstructionLinkedListInit(miniInstructionLL_p);
     
     return miniInstructionLL_p;
 }
@@ -58,7 +58,7 @@ MiniInstructionLinkedList *miniInstructionLinkedListCreate(void){
  * 
  * @param miniInstructionLL_p
 */
-static void MiniInstructionLinkedListInit(MiniInstructionLinkedList *miniInstructionLL_p){
+static void MiniBranchInstructionLinkedListInit(MiniBranchInstructionLinkedList *miniInstructionLL_p){
     miniInstructionLL_p->start = NULL;
     miniInstructionLL_p->size = 0;
 }
@@ -66,16 +66,16 @@ static void MiniInstructionLinkedListInit(MiniInstructionLinkedList *miniInstruc
 /**
  * Frees miniInstructionLL_p, and everything inside it except instructionInfo and stuff in it.
  * 
- * @param miniInstructionLL_p, MiniInstructionLinkedList to free
+ * @param miniInstructionLL_p, MiniBranchInstructionLinkedList to free
  * 
  * @note assuming instructions are not malloced (like in miniInstructionLinkedListAdd)
  * 
  * @note USING THIS!
 */
-void miniInstructionLinkedListFreeRegular(MiniInstructionLinkedList *miniInstructionLL_p){
+void miniInstructionLinkedListFreeRegular(MiniBranchInstructionLinkedList *miniInstructionLL_p){
     
-    MiniInstructionNode *curNode = miniInstructionLL_p->start;
-    MiniInstructionNode *tmp;
+    MiniBranchInstructionNode *curNode = miniInstructionLL_p->start;
+    MiniBranchInstructionNode *tmp;
     while(curNode != NULL){
         tmp = curNode->next;
 

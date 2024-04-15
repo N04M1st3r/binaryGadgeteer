@@ -6,7 +6,7 @@
 #define MAX_MEMONIC_OPCODE_LEN 3
 
 /*
-MiniInstruction ideas to improve and explanation
+MiniBranchInstruction ideas to improve and explanation
 note: can maybe get rid of mnemonicOpcode but there is no must that a mnemonicOpcode will not contain 0
 
 maybe add instructionPrefix to there.
@@ -33,27 +33,27 @@ Example 2:
 
 
 */
-typedef struct MiniInstruction{ //saving the minimum info needed on the instruction
+typedef struct MiniBranchInstruction{ //saving the minimum info needed on the instruction
     uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN];       /*Max mnemonicOpcode/startOpcode length is 3 (according to intel manual), start opcode*/
     uint8_t mnemonicOpcodeSize;
     uint8_t additionSize;
-} MiniInstruction; //YOU ARE NOT SUPPOUS TO CREATE OBJECT OF THIS, just use miniInstructionLinkedListFreeNoInstructionInfo
+} MiniBranchInstruction; //YOU ARE NOT SUPPOUS TO CREATE OBJECT OF THIS, just use miniInstructionLinkedListFreeNoInstructionInfo
 
-typedef struct MiniInstructionNode{
-    MiniInstruction instructionInfo;
-    struct MiniInstructionNode *next;
-} MiniInstructionNode;
+typedef struct MiniBranchInstructionNode{
+    MiniBranchInstruction instructionInfo;
+    struct MiniBranchInstructionNode *next;
+} MiniBranchInstructionNode;
 
-typedef struct MiniInstructionLinkedList{
-    MiniInstructionNode *start;
+typedef struct MiniBranchInstructionLinkedList{
+    MiniBranchInstructionNode *start;
     size_t size;
-} MiniInstructionLinkedList;
+} MiniBranchInstructionLinkedList;
 
 
-int miniInstructionLinkedListAdd(MiniInstructionLinkedList *, uint8_t mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize);
+int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *, uint8_t mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize);
 
-MiniInstructionLinkedList *miniInstructionLinkedListCreate(void);
+MiniBranchInstructionLinkedList *miniInstructionLinkedListCreate(void);
 
 //use this with miniInstructionLinkedListAdd.
-void miniInstructionLinkedListFreeRegular(MiniInstructionLinkedList *);
+void miniInstructionLinkedListFreeRegular(MiniBranchInstructionLinkedList *);
 

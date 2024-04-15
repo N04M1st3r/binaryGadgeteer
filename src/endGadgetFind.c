@@ -47,27 +47,31 @@ FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, Arc
 
     FoundLocationsBufferNode *resultNode = NULL;
 
-    MiniInstructionNode *curInstructionN_p =  arch_p->retEndings->start; 
+    MiniBranchInstructionNode *curInstructionN_p =  arch_p->retEndings->start; 
     for(;curInstructionN_p != NULL; curInstructionN_p = curInstructionN_p->next){
-        char *location = memmem(buffer, bufferSize, curInstructionN_p->instructionInfo.mnemonicOpcode, curInstructionN_p->instructionInfo.mnemonicOpcodeSize);
-        if (location == NULL)
-            continue; //Not found :(
-        
-        //Found :)
-        //printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld FINAL: 0x%" PRIx64 "\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer, buf_vaddr+location - buffer);
-        //each one I find I will write its address
+        char *buffer_p = buffer;
+        char *location;
 
-        FoundLocationsBufferNode *bufferLocationNode_p = (FoundLocationsBufferNode *) malloc(sizeof(FoundLocationsBufferNode));
-        if ( bufferLocationNode_p == NULL ){
-            err("Error in malloc, inside searchRetInBuffer, while allocating for bufferLocationNode_p, size %ld.", sizeof(FoundLocationsBufferNode));
-            FoundLocationsBufferNodeFree(resultNode);
-            return NULL;
+        while ( location = memmem(buffer_p, bufferSize - (buffer_p-buffer), curInstructionN_p->instructionInfo.mnemonicOpcode, curInstructionN_p->instructionInfo.mnemonicOpcodeSize) ){
+            //Found :)
+
+            //printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld FINAL: 0x%" PRIx64 "\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer, buf_vaddr+location - buffer);
+            //each one I find I will write its address
+
+            FoundLocationsBufferNode *bufferLocationNode_p = (FoundLocationsBufferNode *) malloc(sizeof(FoundLocationsBufferNode));
+            if ( bufferLocationNode_p == NULL ){
+                err("Error in malloc, inside searchRetInBuffer, while allocating for bufferLocationNode_p, size %ld.", sizeof(FoundLocationsBufferNode));
+                FoundLocationsBufferNodeFree(resultNode);
+                return NULL;
+            }
+            bufferLocationNode_p->offset = location - buffer;
+            bufferLocationNode_p->miniInstructionInfo = curInstructionN_p->instructionInfo;
+            bufferLocationNode_p->next = resultNode;
+
+            resultNode = bufferLocationNode_p;
+
+            buffer_p = location + curInstructionN_p->instructionInfo.mnemonicOpcodeSize;
         }
-        bufferLocationNode_p->offset = location - buffer;
-        bufferLocationNode_p->miniInstructionInfo = curInstructionN_p->instructionInfo;
-        bufferLocationNode_p->next = resultNode;
-
-        resultNode = bufferLocationNode_p;
     }
 
 
@@ -125,10 +129,10 @@ static int initRETIntel(ArchInfo *arch_p){
     CA iw(word)       RET        Far  return
     */
     /*arch->retEndings = {
-        (MiniInstruction){{0xC3, 0, 0}, 1, 0}, // Near RET
-        (MiniInstruction){{0xCB, 0, 0}, 1, 0}, // Far  RET
-        (MiniInstruction){{0xC2, 0, 0}, 1, 2}, // Near RET {imm16}
-        (MiniInstruction){{0xCA, 0, 0}, 1, 2}  // Far RET {imm16}
+        (MiniBranchInstruction){{0xC3, 0, 0}, 1, 0}, // Near RET
+        (MiniBranchInstruction){{0xCB, 0, 0}, 1, 0}, // Far  RET
+        (MiniBranchInstruction){{0xC2, 0, 0}, 1, 2}, // Near RET {imm16}
+        (MiniBranchInstruction){{0xCA, 0, 0}, 1, 2}  // Far RET {imm16}
     };*/
     arch_p->retEndings = miniInstructionLinkedListCreate();
     if(arch_p->retEndings == NULL){
