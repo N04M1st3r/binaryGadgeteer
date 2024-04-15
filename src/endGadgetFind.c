@@ -52,7 +52,7 @@ FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, Arc
         char *buffer_p = buffer;
         char *location;
 
-        while ( location = memmem(buffer_p, bufferSize - (buffer_p-buffer), curInstructionN_p->instructionInfo.mnemonicOpcode, curInstructionN_p->instructionInfo.mnemonicOpcodeSize) ){
+        while ( (location = memmem(buffer_p, bufferSize - (buffer_p-buffer), curInstructionN_p->instructionInfo.mnemonicOpcode, curInstructionN_p->instructionInfo.mnemonicOpcodeSize)) ){
             //Found :)
 
             //printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld FINAL: 0x%" PRIx64 "\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer, buf_vaddr+location - buffer);

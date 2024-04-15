@@ -11,7 +11,7 @@
 static ZydisDecoder *decoder_p;
 static ZydisFormatter *formatter_p;
 
-static gadgetGeneralNode *_expandInstructionDownR(char *buffer, size_t bufferSize, size_t bufferInstructionOffset, gadgetGeneralNode *fatherGadgetGeneralNode, ZydisDecodedInstruction *decodedInstructionStart_p, size_t depth);
+static gadgetGeneralLinkedListEnds _expandInstructionDownR(char *buffer, size_t bufferSize, size_t bufferInstructionOffset, gadgetGeneralNode *fatherGadgetGeneralNode, ZydisDecodedInstruction *decodedInstructionStart_p, size_t depth);
 
 /**
  * Creating gadgetGeneralNode and initilizing it with gadgetG.
@@ -106,12 +106,13 @@ gadgetGeneral gadgetGeneralCreateWithGadget(gadget firstGadget, uint64_t vaddr, 
  * 
 */
 void gadgetFreeAll(gadget *gadget_p){
-    gadget *tmp;
+    gadget *nextGadget;
     while(gadget_p != NULL && gadget_p->refrences == 0){
-        tmp = gadget_p->next;
+        nextGadget = gadget_p->next;
         free(gadget_p);
-        gadget_p = tmp;
-        (gadget_p->refrences)--;
+        if(nextGadget)
+            (nextGadget->refrences)--;
+        gadget_p = nextGadget;
     }
 }
 
@@ -126,6 +127,7 @@ void gadgetFreeAll(gadget *gadget_p){
 void gadgetGeneralNodeFreeCurrent(gadgetGeneralNode *gadgetGeneralNode_p){
     if (gadgetGeneralNode_p != NULL){
         if(gadgetGeneralNode_p->gadgetG.first != NULL){
+            
             gadgetFreeAll(gadgetGeneralNode_p->gadgetG.first);
             gadgetGeneralNode_p->gadgetG.first = NULL; //just as a fail safe
         }
@@ -211,14 +213,15 @@ int gadgetGeneralNodeAddInstruction(gadgetGeneralNode *gadgetGeneralNode_p, mini
  * @param branchInstructionLoc FoundLocationsBufferNode* is a pointer to the branch instruction found. 
  * @param branchInstructionMnemonic the ZydisMnemonic of the instruction (can calc it here maybe?) ZYDIS_MNEMONIC_RET for example.
  * 
- * @return gadgetGeneralNode * with all the gadgets in it. NULL if Error.
+ * @return gadgetGeneralLinkedListEnds, both ends, the start which contains all gadgetGeneralNode * and the end which is just the end of the nodes.
+ *          if Error {NULL, NULL}.
  * 
  * 
  * @note THIS IS MALLOCED, REMEBER TO FREE WITH gadgetGeneralNodeFreeAll!
 */
-gadgetGeneralNode *expandInstructionDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileOffset, size_t bufferSize, FoundLocationsBufferNode *branchInstructionLoc, ZydisMnemonic branchInstructionMnemonic, size_t depth){
+gadgetGeneralLinkedListEnds expandInstructionDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileOffset, size_t bufferSize, FoundLocationsBufferNode *branchInstructionLoc, ZydisMnemonic branchInstructionMnemonic, size_t depth){
     if (depth == 0)
-        return (gadgetGeneralNode *) NULL;
+        return (gadgetGeneralLinkedListEnds) {.start=NULL, .end=NULL};
     
     depth--;
     
@@ -227,7 +230,7 @@ gadgetGeneralNode *expandInstructionDown(char *buffer, uint64_t buf_vaddr, uint6
     
     if(branchInstructionLoc->offset + branchMiniInstruction.instructionLength > bufferSize){
         err("Too big inside expandInstructionDown on check :(");
-        return (gadgetGeneralNode *) NULL;
+        return (gadgetGeneralLinkedListEnds) {.start=NULL, .end=NULL};
     }
     memcpy(branchMiniInstruction.instructionFullOpcode, buffer + branchInstructionLoc->offset, branchMiniInstruction.instructionLength);
     branchMiniInstruction.mnemonic = branchInstructionMnemonic;
@@ -235,14 +238,14 @@ gadgetGeneralNode *expandInstructionDown(char *buffer, uint64_t buf_vaddr, uint6
     gadgetGeneral branchGadgetG = gadgetGeneralCreateWithInstruction(branchMiniInstruction, buf_vaddr + branchInstructionLoc->offset, buf_fileOffset + branchInstructionLoc->offset);
     if(branchGadgetG.first == NULL){
         err("Error inside expandInstructionDown on gadgetGeneralCreateWithInstruction for branchGadgetG.");
-        return (gadgetGeneralNode *) NULL;
+        return (gadgetGeneralLinkedListEnds) {.start=NULL, .end=NULL};
     }
 
     gadgetGeneralNode *resultGeneralNode = gadgetGeneralNodeCreate(branchGadgetG);
     if (resultGeneralNode == NULL){
         gadgetFreeAll(branchGadgetG.first);
         err("Error inside expandInstructionDown on gadgetGeneralNodeCreate for resultGeneralNode.");
-        return (gadgetGeneralNode *) NULL;
+        return (gadgetGeneralLinkedListEnds) {.start=NULL, .end=NULL};
     }
 
     //now the cool stuff :)
@@ -259,6 +262,7 @@ gadgetGeneralNode *expandInstructionDown(char *buffer, uint64_t buf_vaddr, uint6
     runtime_address--; bufferDecode--; //because staring at 1.
 
     gadgetGeneralNode *lastGeneralNode = resultGeneralNode;
+    
 
     for(size_t i = 1; i <= ZYDIS_MAX_INSTRUCTION_LENGTH; i++, runtime_address--, bufferDecode--){
         if(bufferDecode < buffer){
@@ -279,11 +283,11 @@ gadgetGeneralNode *expandInstructionDown(char *buffer, uint64_t buf_vaddr, uint6
         
         
 
-
-        lastGeneralNode->next = _expandInstructionDownR(buffer, bufferSize, bufferDecode-buffer, resultGeneralNode ,&decodedInstruction, depth);
+        gadgetGeneralLinkedListEnds nextGadgetGNodeEnds = _expandInstructionDownR(buffer, bufferSize, bufferDecode-buffer, resultGeneralNode ,&decodedInstruction, depth);
+        lastGeneralNode->next = nextGadgetGNodeEnds.start;
         if(lastGeneralNode->next != NULL){
             //there is actually stuff there. / no error
-            lastGeneralNode = lastGeneralNode->next;
+            lastGeneralNode = nextGadgetGNodeEnds.end;
         }
         
         //TODO: there is a critical error, it does not remeber depth 2?
@@ -292,16 +296,12 @@ gadgetGeneralNode *expandInstructionDown(char *buffer, uint64_t buf_vaddr, uint6
         ZydisFormatterFormatInstruction(formatter_p, &decodedInstruction, operands,
                 decodedInstruction.operand_count_visible, decodedBuffer, sizeof(decodedBuffer), runtime_address, ZYAN_NULL);
 
-        printf("0x%" PRIx64 ": %s on depth %zu\n", runtime_address ,decodedBuffer, depth);
+        //printf("0x%" PRIx64 ": %s on depth %zu\n", runtime_address ,decodedBuffer, depth);
 
-        printf("%ld showing for i=%ld:\n", depth, i);
-        gadgetGeneralNodeShowAll(resultGeneralNode);
-        printf("END SHOW\n");
-        //runtime_address += instruction.length;
     }
     resultGeneralNode->gadgetG.checked = true;
 
-    return resultGeneralNode;
+    return (gadgetGeneralLinkedListEnds) {.start=resultGeneralNode, .end=lastGeneralNode};
 }
 
 /**
@@ -314,9 +314,12 @@ gadgetGeneralNode *expandInstructionDown(char *buffer, uint64_t buf_vaddr, uint6
  * @param decodedInstructionStart_p the decoded instruction pointer
  * @param depth The depth you want to search of, when reaches 0 stops.
  * 
+ * @return gadgetGeneralLinkedListEnds, both ends, the start which contains all gadgetGeneralNode * and the end which is just the end of the nodes
+ *         if Error {NULL, NULL} also if nothing {NULL, NULL}.
+ * 
  * @note USING MALLOC HERE! remeber to free!! with a special function.
 */
-static gadgetGeneralNode *_expandInstructionDownR(char *buffer, size_t bufferSize, size_t bufferInstructionOffset, gadgetGeneralNode *fatherGadgetGeneralNode, ZydisDecodedInstruction *decodedInstructionStart_p, size_t depth){
+static gadgetGeneralLinkedListEnds _expandInstructionDownR(char *buffer, size_t bufferSize, size_t bufferInstructionOffset, gadgetGeneralNode *fatherGadgetGeneralNode, ZydisDecodedInstruction *decodedInstructionStart_p, size_t depth){
     
     
     gadget firstGadget = {.next=fatherGadgetGeneralNode->gadgetG.first, .refrences=0};
@@ -329,14 +332,14 @@ static gadgetGeneralNode *_expandInstructionDownR(char *buffer, size_t bufferSiz
     gadgetGeneral branchGadgetG = gadgetGeneralCreateWithGadget(firstGadget, fatherGadgetGeneralNode->gadgetG.vaddr - decodedInstructionStart_p->length,  fatherGadgetGeneralNode->gadgetG.addr_file - decodedInstructionStart_p->length);
     if(branchGadgetG.first == NULL){
         err("Error inside _expandInstructionDownR on gadgetGeneralCreateWithGadget for branchGadgetG.");
-        return (gadgetGeneralNode *) NULL;
+        return (gadgetGeneralLinkedListEnds) {.start=NULL, .end=NULL};
     }
 
     gadgetGeneralNode *resultGeneralNode = gadgetGeneralNodeCreate(branchGadgetG);
     if (resultGeneralNode == NULL){
         gadgetFreeAll(branchGadgetG.first);
         err("Error inside _expandInstructionDownR on gadgetGeneralNodeCreate for resultGeneralNode.");
-        return (gadgetGeneralNode *) NULL;
+        return (gadgetGeneralLinkedListEnds) {.start=NULL, .end=NULL};
     }
     
 
@@ -345,7 +348,7 @@ static gadgetGeneralNode *_expandInstructionDownR(char *buffer, size_t bufferSiz
     resultGeneralNode->gadgetG.length = fatherGadgetGeneralNode->gadgetG.length + 1;
 
     if(!depth--)
-        return (gadgetGeneralNode *) resultGeneralNode;
+        return (gadgetGeneralLinkedListEnds) {.start=resultGeneralNode, .end=resultGeneralNode};
 
     //TODO make a function to do it from here or something... because it is the same as expandInstructionDown.
     ZydisDecodedInstruction decodedInstruction;
@@ -365,6 +368,7 @@ static gadgetGeneralNode *_expandInstructionDownR(char *buffer, size_t bufferSiz
     gadgetGeneralNode *lastGeneralNode = resultGeneralNode;
 
     
+    
     for(size_t i = 1; i <= ZYDIS_MAX_INSTRUCTION_LENGTH; i++, runtime_address--, bufferDecode--){
         if(bufferDecode < buffer){
             err("Cant Go that down! in _expandInstructionDownR");
@@ -383,11 +387,11 @@ static gadgetGeneralNode *_expandInstructionDownR(char *buffer, size_t bufferSiz
         if (decodedInstruction.length != i)
             continue;
         
-        lastGeneralNode->next = _expandInstructionDownR(buffer, bufferSize, bufferDecode-buffer, resultGeneralNode ,&decodedInstruction, depth);
+        gadgetGeneralLinkedListEnds nextGadgetGNodeEnds = _expandInstructionDownR(buffer, bufferSize, bufferDecode-buffer, resultGeneralNode ,&decodedInstruction, depth);
+        lastGeneralNode->next = nextGadgetGNodeEnds.start;
         if(lastGeneralNode->next != NULL){
             //there is actually stuff there. / no error
-            printf("ADDING");  
-            lastGeneralNode = lastGeneralNode->next;
+            lastGeneralNode = nextGadgetGNodeEnds.end;
         }
         
             
@@ -399,21 +403,13 @@ static gadgetGeneralNode *_expandInstructionDownR(char *buffer, size_t bufferSiz
         ZydisFormatterFormatInstruction(formatter_p, &decodedInstruction, operands,
                 decodedInstruction.operand_count_visible, decodedBuffer, sizeof(decodedBuffer), runtime_address, ZYAN_NULL);
 
-        printf("0x%" PRIx64 ": %s on depth %zu\n", runtime_address ,decodedBuffer, depth);
-
-        printf("main showing for i=%ld:\n", i);
-        gadgetGeneralNodeShowAll(resultGeneralNode);
-        printf("END SHOW\n");
-        gadgetGeneralNodeShowAll(lastGeneralNode);
-        printf("END SHOW2\n\n");
-        
-        
+        //printf("0x%" PRIx64 ": %s on depth %zu\n", runtime_address ,decodedBuffer, depth);
 
     }
 
     resultGeneralNode->gadgetG.checked = true;
 
-    return resultGeneralNode;
+    return (gadgetGeneralLinkedListEnds){.start=resultGeneralNode, .end=lastGeneralNode};
 }
 
 /**
@@ -490,4 +486,52 @@ void gadgetGeneralNodeShowAll(gadgetGeneralNode *gadgetGNode_p){
 */
 void gadgetGeneralNodeShowAllCombined(gadgetGeneralNode *gadgetGNode_p){
     //this does it in assumption they are all glued together.
+}
+
+
+/**
+ * Shows all the gadgets inside it, decoding each one seperatly, shows only the ends
+ * Detecting ends by references 0.
+ * 
+ * @param gadgetGNode_p gadgetGeneralNode* to show.
+ * 
+ * 
+ * TODO: split to more functions. and combine with the other shows.
+*/
+void gadgetGeneralNodeShowOnlyEnds(gadgetGeneralNode *gadgetGNode_p){
+    //simply look at the refrences, if it is 0 it is an end.
+    ZydisDecodedInstruction decodedInstruction;
+    gadget *curGadget_p;
+    ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+    char decodedBuffer[256];
+
+    for(;gadgetGNode_p != NULL; gadgetGNode_p = gadgetGNode_p->next){
+        if (gadgetGNode_p->gadgetG.first->refrences != 0)
+            continue;
+
+        printf("0x%" PRIx64 ": ", gadgetGNode_p->gadgetG.vaddr);
+        ZyanU64 runtime_address = gadgetGNode_p->gadgetG.vaddr;
+        //gadgetGNode_p->gadgetG.first->minInstruction.instructionLength
+        curGadget_p = gadgetGNode_p->gadgetG.first;
+        for(; curGadget_p != NULL; runtime_address += curGadget_p->minInstruction.instructionLength , curGadget_p = curGadget_p->next){
+            //can also decode this in one go and just give the length of all the instructions.
+            
+            if(!ZYAN_SUCCESS(ZydisDecoderDecodeFull(decoder_p, curGadget_p->minInstruction.instructionFullOpcode, curGadget_p->minInstruction.instructionLength , &decodedInstruction, operands))){
+                        //Cant decode this, no such instruction.
+                        continue;
+                    }
+
+            //passing 0 in runtime address because I don't care about it, later care about it
+            //TODO care about runtime_address and don't just pass 0.
+
+            ZydisFormatterFormatInstruction(formatter_p, &decodedInstruction, operands,
+                decodedInstruction.operand_count_visible, decodedBuffer, sizeof(decodedBuffer), runtime_address, ZYAN_NULL);
+
+            printf("%s", decodedBuffer);
+            if(curGadget_p->next != NULL)
+                printf(" -> ");
+        }
+        printf("\n");
+
+    }
 }

@@ -57,6 +57,11 @@ typedef struct gadgetGeneralNode{
     struct gadgetGeneralNode *next;
 } gadgetGeneralNode;
 
+typedef struct gadgetGeneralLinkedListEnds{
+    gadgetGeneralNode *start;
+    gadgetGeneralNode *end;
+} gadgetGeneralLinkedListEnds;
+
 
 gadgetGeneralNode *gadgetGeneralNodeCreate(gadgetGeneral gadgetG);
 gadgetGeneral gadgetGeneralCreateWithGadget(gadget firstGadget, uint64_t vaddr, uint64_t addr_file);
@@ -75,7 +80,7 @@ int gadgetGeneralNodeAppendGadgetGeneralNode(gadgetGeneralNode *dest, gadgetGene
 int gadgetGeneralNodeAddInstruction(gadgetGeneralNode *, miniInstruction instruction);
 
 
-gadgetGeneralNode *expandInstructionDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileOffset, size_t readAmount, FoundLocationsBufferNode *curBranchInstructionLocation, ZydisMnemonic branchInstructionMnemonic, size_t depth);
+gadgetGeneralLinkedListEnds expandInstructionDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileOffset, size_t readAmount, FoundLocationsBufferNode *curBranchInstructionLocation, ZydisMnemonic branchInstructionMnemonic, size_t depth);
 void initDecoderAndFormatter(ZydisDecoder *decoder_given_p, ZydisFormatter *formatter_given_p);
 
 
@@ -83,3 +88,5 @@ void gadgetGeneralNodeShowAll(gadgetGeneralNode *gadgetGNode_p);
 
 //TODO write this.
 void gadgetGeneralNodeShowAllCombined(gadgetGeneralNode *gadgetGNode_p);
+
+void gadgetGeneralNodeShowOnlyEnds(gadgetGeneralNode *gadgetGNode_p);

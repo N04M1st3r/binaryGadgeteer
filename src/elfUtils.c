@@ -1003,17 +1003,12 @@ Mini_ELF_Phdr_node *getAllExec_Mini_Phdr(void){
     if (!(programHdr.p_flags & PF_X))
       continue;
     
-    printf("OK..\n");
-
     //checking if segement is LOAD (it has to be if exec but still, lets check).
     if ( programHdr.p_type != PT_LOAD )
       continue;
 
 
-    printf("GOOD\n");
-    
     if(cur != head){
-      printf("IN HERE\n");
       cur->next = (Mini_ELF_Phdr_node *) malloc(sizeof(Mini_ELF_Phdr_node)); 
       if(cur->next == NULL){
         // Malloc failed

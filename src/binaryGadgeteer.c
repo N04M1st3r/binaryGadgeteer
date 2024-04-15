@@ -107,12 +107,15 @@ static void readOptions(int argc, char **argv){
     while ((n = getopt_long(argc, argv, "a:hvo:", options, NULL)) != EOF){
         switch(n){
             case 'a': ;
+                err("not implemented");
+                exit(1);
                 parseOptionAddress(optarg);
                 //printf("chosen base: %llX\n", base_address_number);
                 break;
             case 'h':
                 //help
                 fprintf(stdout, HELP_TEXT, argv[0]);
+                exit(0);
                 break;
             case 'v':
                 //version
@@ -157,77 +160,15 @@ foundLocationsNode* searchInBuffer(char *buffer, uint64_t bufferSize, char *sear
 
 int main(int argc, char *argv[])
 {
-    /*char *mnemonicStr = ZydisMnemonicGetString(ZYDIS_MNEMONIC_RET);
-    printf("here: %s\n", mnemonicStr);
-
-    ZydisShortString *str = ZydisMnemonicGetStringWrapped(ZYDIS_MNEMONIC_RET);
-    printf("size: 0x%" PRIx8 "\n", str->size);
-    printf("\ns: %s\n", str->data);
-    //https://doc.zydis.re/v4.0.0/html/structZydisEncoderRequest__
-
-
-    //https://www.felixcloutier.com/x86/ret
-    ZydisEncoderRequest reqRET;
-    memset(&reqRET, 0, sizeof(reqRET));
-    reqRET.machine_mode = ZYDIS_MACHINE_MODE_LONG_64; //ZYDIS_MACHINE_MODE_LEGACY_32; //ZYDIS_MACHINE_MODE_LONG_64 
-    //reqRET.allowed_encodings
-    reqRET.mnemonic = ZYDIS_MNEMONIC_RET;
-    //reqRET.prefixes(A combination of requested encodable prefixes)
-    reqRET.branch_type = ZYDIS_BRANCH_TYPE_NEAR; //https://doc.zydis.re/v4.0.0/html/DecoderTypes_8h#a3f3403c7ff379144e3e77ed31baa1511
-    reqRET.branch_width = ZYDIS_BRANCH_WIDTH_NONE; //https://doc.zydis.re/v4.0.0/html/Encoder_8h#ac18d50bda13b1a44a87b1e5331bc1e22
-    
-    reqRET.operand_count = 1;
-    reqRET.operands[0].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
-    reqRET.operands[0].imm.u = 0; 
-    //short: there is no jmp short.
-    //near: c3.
-    //far: cb.           
-
-    //reqRET.operands[]
-    
-    //After doing a lot of checks, it seems the best solution is to hard code the opcodes for the stuff I need to search fast.
-    //I will add a feature of my own to search for your stuff but for stuff like ret, jmp ect.. I will need to hard code.
-
-    ZyanU8 instruction_opcode[ZYDIS_MAX_INSTRUCTION_LENGTH];
-    ZyanUSize len = sizeof(instruction_opcode);
-
-    ZyanStatus status = ZydisEncoderEncodeInstruction(&reqRET, instruction_opcode, &len);
-    printf("%d\n", ZYAN_FAILED(status));
-    for(int i=0; i<len; i++){
-        printf("0x%" PRIx8 " ", instruction_opcode[i]);
-    }
-    
-    printf("\n");
-    exit(1);
-    ZydisEncoderRequest reqA;
-    memset(&reqA, 0, sizeof(reqA));
-    reqA.mnemonic = ZYDIS_MNEMONIC_RET;
-    reqA.machine_mode = ZYDIS_MACHINE_MODE_LEGACY_32;
-    reqA.operand_count = 0;
-    ZyanU8 encoded_instructionA[ZYDIS_MAX_INSTRUCTION_LENGTH];
-    ZyanUSize encoded_lengthA = sizeof(encoded_instructionA);
-
-    if (ZYAN_FAILED(ZydisEncoderEncodeInstruction(&reqA, encoded_instructionA, &encoded_lengthA))){
-        puts("Filed to encode instruction :(");
-        return 1;
-    }
-
-    for(int i=0; i<encoded_lengthA; i++){
-        printf("0x%" PRIx8 " ", encoded_instructionA[i]);
-    }
-    printf("\n");
-
-    exit(0);*/
     //works:
     readOptions(argc, argv);
 
-    printf("starting\n");
     if(initElfUtils(filename, -1)){ //"./checkMe"
         err("error inside initElfUtils at main.");
         return 1;
     }
     uint64_t entry = getEntryPoint(); //(Elf64_Addr, uint64_t)
-    printf("entry: 0x%" PRIx64 "\n", entry);
+    printf("entry: 0x%" PRIx64 "\n", entry); //TODO implement so you can control the entry point (for real, that is just changing in the segements)
     printf("arch: %s\n", getArch());
 
     //endianess:
@@ -236,8 +177,6 @@ int main(int argc, char *argv[])
     //showSectionsHeaders(); 
     //showProgramHeaders();
 
-    printf("getting:\n");
-
     char *buffer = (char *) malloc(READ_AMOUNT); //on the heap because it is super big.
     if (buffer == NULL){
         err("Error while mallocing for buffer, inside main. of size  %zu .", READ_AMOUNT);
@@ -245,7 +184,6 @@ int main(int argc, char *argv[])
     }
     
     Mini_ELF_Phdr_node *head = getAllExec_Mini_Phdr();
-    printf("GOT;;;;;\n");
     if(head == NULL){
         err("Error, getAllExec_Mini_Phdr returned NULL, no program headers.");
         return 2;
@@ -285,11 +223,12 @@ int main(int argc, char *argv[])
 
     initDecoderAndFormatter(&decoder, &formatter);
     
-    gadgetGeneralNode *allGadgetsGeneralNode = gadgetGeneralNodeCreate((gadgetGeneral) {.addr_file=0, .checked=true, .length=0, .vaddr=0, .first=NULL});
-    if (allGadgetsGeneralNode == NULL){
-        err("Error while getting allGadgetsGeneralNode at gadgetGeneralNodeCreate in main.");
+    gadgetGeneralNode *allGadgetsGeneralNodeStart = gadgetGeneralNodeCreate((gadgetGeneral) {.addr_file=0, .checked=true, .length=0, .vaddr=0, .first=NULL});
+    if (allGadgetsGeneralNodeStart == NULL){
+        err("Error while getting allGadgetsGeneralNodeStart at gadgetGeneralNodeCreate in main.");
         return 5;
     }
+    gadgetGeneralLinkedListEnds allGadgetsGeneralEnds = {.start=allGadgetsGeneralNodeStart, .end=allGadgetsGeneralNodeStart};
 
     //TODO: implement so it will go a little back when checking! MUST!
     while(curMiniHdrNode != NULL){
@@ -322,45 +261,41 @@ int main(int argc, char *argv[])
             //printf("cur: 0x%" PRIx64 "\n", buf_vaddr);
             FoundLocationsBufferNode *curBranchInstructionLocation = locations;
 
-            int debugDELLATER = 0;
+            //int debugDELLATER = 0;
             for(; curBranchInstructionLocation != NULL; curBranchInstructionLocation = curBranchInstructionLocation->next){
-                if(++debugDELLATER == 5)
-                    exit(90);
-                printf("%d\n", debugDELLATER);
+                //if(++debugDELLATER == 5)
+                //    exit(90);
+                //printf("%d\n", debugDELLATER);
                 
-
-                gadgetGeneralNode *curGadgetGeneralNode = expandInstructionDown(buffer, buf_vaddr, buf_fileOffset, readAmount, curBranchInstructionLocation, ZYDIS_MNEMONIC_RET, 3);
-                if (curGadgetGeneralNode == NULL){
+                gadgetGeneralLinkedListEnds curGadgetsGNodeEnds = expandInstructionDown(buffer, buf_vaddr, buf_fileOffset, readAmount, curBranchInstructionLocation, ZYDIS_MNEMONIC_RET, 3);
+                if (curGadgetsGNodeEnds.start == NULL){
                     err("Error in expandInstructionDown, into curGadgetGeneralNode inside main.");
                     return 7;
                 }
-                printf("showing:\n");
-                gadgetGeneralNodeShowAll(curGadgetGeneralNode);
 
-                
-                
+                allGadgetsGeneralEnds.end->next = curGadgetsGNodeEnds.start;
+                allGadgetsGeneralEnds.end = curGadgetsGNodeEnds.end;
+
+                //printf("showing:\n");
+                //gadgetGeneralNodeShowAll(curGadgetsGNodeEnds.start);
             }
-
             FoundLocationsBufferNodeFree(locations);
-
         }
-
-        
-
-        
-
-
-
         curMiniHdrNode = curMiniHdrNode->next;
     }
     
-    
+    allGadgetsGeneralEnds.start = allGadgetsGeneralEnds.start->next;
+    gadgetGeneralNodeFreeCurrent(allGadgetsGeneralNodeStart);
+    if(allGadgetsGeneralEnds.end == allGadgetsGeneralNodeStart){
+        //if it is equal it means no gadgets are found (WTF) but checking just in case.
+        allGadgetsGeneralEnds.end = NULL;
+    }
 
 
+    gadgetGeneralNodeShowOnlyEnds(allGadgetsGeneralEnds.start);
 
-    printf("freeing\n");
-    gadgetGeneralNodeFreeAll(allGadgetsGeneralNode);
-
+    //printf("freeing\n");
+    gadgetGeneralNodeFreeAll(allGadgetsGeneralEnds.start);
     free(buffer);
 
     freeArchInfo(arch_p);
@@ -372,100 +307,7 @@ int main(int argc, char *argv[])
     if(cleanElfUtils()){
         err("Error cleaning elfUtils, in cleanElfUtils inside main.\n");
     }
-    printf("finished freeing\n");
-    exit(0);
-
-    //I THINK: using zydis v4.0.0 (or the other version 4.0.?)
-    ZydisEncoderRequest req;
-    memset(&req, 0, sizeof(req));
-
-    /*
-    req.mnemonic = ZYDIS_MNEMONIC_MOV;
-    req.machine_mode = ZYDIS_MACHINE_MODE_LONG_64; //find a way to now write that each time maybe?
-    req.operand_count = 2; 
-    req.operands[0].type = ZYDIS_OPERAND_TYPE_REGISTER;
-    req.operands[0].reg.value = ZYDIS_REGISTER_RAX;
-    req.operands[1].type = ZYDIS_OPERAND_TYPE_IMMEDIATE;
-    req.operands[1].imm.u = 0x1337;
-    */
-
-   
-
-    req.mnemonic = ZYDIS_MNEMONIC_RET;
-    req.machine_mode = ZYDIS_MACHINE_MODE_LEGACY_32;
-    req.operand_count = 0;
-    ZyanU8 encoded_instruction[ZYDIS_MAX_INSTRUCTION_LENGTH];
-    ZyanUSize encoded_length = sizeof(encoded_instruction);
-
-    if (ZYAN_FAILED(ZydisEncoderEncodeInstruction(&req, encoded_instruction, &encoded_length))){
-        puts("Filed to encode instruction :(");
-        return 1;
-    }
-
-    puts("Encoded insturction sucessfully :)");
-    for (ZyanUSize i = 0; i < encoded_length; i++){
-        printf("%02X ", encoded_instruction[i]);
-    }
-    puts("");
-
-    return 0;
-
-    //readOptions(argc, argv);
-
-    //printf("binary file: %s\n", argv[optind]);
-    //printf("chosen base: %llX\n", base_address_number);
-
-
-    /*
-    I will search for RET by assembeling a RET with the spesific things.
-
-    TODO:
-    1) write a function to get the architecture
-    2) write a function to get 
-    3)
-
-
-    how do I get the stack width?
-    https://doc.zydis.re/v4.0.0/html/group__decoder#ga5448746153e38c32f81dcdc73f177002
-    https://doc.zydis.re/v4.0.0/html/SharedTypes_8h#aa771500a3715933bf22eb84285ab6b6e
-
-    */
-    
-    // printf("Version: %16"PRIX64" \n", 	ZydisGetVersion());
-    // printf("%ld\n",sizeof(ZyanU64));
-    // printf("%ld\n",sizeof(ZyanU8));
-    // printf("%d\n", ZYDIS_MACHINE_MODE_LONG_64);
-    // printf("here:%s\n\n", PRIX64);
-    // printf("here:%s\n\n", PRIX32);
-
-    // ZyanU8 data[] =
-    // {
-    //     0x51, 0x8D, 0x45, 0xFF, 0x50, 0xFF, 0x75, 0x0C, 0xFF, 0x75,
-    //     0x08, 0xFF, 0x15, 0xA0, 0xA5, 0x48, 0x76, 0x85, 0xC0, 0x0F,
-    //     0x88, 0xFC, 0xDA, 0x02, 0x00
-    // };
-
-    // // The runtime address (instruction pointer) was chosen arbitrarily here in order to better
-    // // visualize relative addressing. In your actual program, set this to e.g. the memory address
-    // // that the code being disassembled was read from.
-    // ZyanU64 runtime_address = 0x007FFFFFFF400000;
-
-    // // Loop over the instructions in our buffer.
-    // ZyanUSize offset = 0;
-    // ZydisDisassembledInstruction instruction;
-    // while (ZYAN_SUCCESS(ZydisDisassembleIntel(
-    //     /* machine_mode:    */ ZYDIS_MACHINE_MODE_LONG_64,
-    //     /* runtime_address: */ runtime_address,
-    //     /* buffer:          */ data + offset,
-    //     /* length:          */ sizeof(data) - offset,
-    //     /* instruction:     */ &instruction
-    // ))) {
-    //     printf("%016" PRIX64 "  %s\n", runtime_address, instruction.text);
-    //     offset += instruction.info.length;
-    //     runtime_address += instruction.info.length;
-    // }
-
-    
+    //printf("finished freeing\n");
 
     return 0;
 }

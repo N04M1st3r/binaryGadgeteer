@@ -8,3 +8,8 @@
  * 
  * or I will just use regex.
 */
+#include "ahoCorasick.h"
+
+int isoBeHappy(void){
+    return 1;
+}
