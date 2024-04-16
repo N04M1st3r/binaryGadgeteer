@@ -291,10 +291,12 @@ int main(int argc, char *argv[])
         allGadgetsGeneralEnds.end = NULL;
     }
 
-
+    //gadgetGeneralNodeShowAll(allGadgetsGeneralEnds.start);
     gadgetGeneralNodeShowOnlyEnds(allGadgetsGeneralEnds.start);
 
-    //printf("freeing\n");
+    //can also maybe sort by whatever with merge sort, https://www.geeksforgeeks.org/sorting-a-singly-linked-list/
+
+
     gadgetGeneralNodeFreeAll(allGadgetsGeneralEnds.start);
     free(buffer);
 
