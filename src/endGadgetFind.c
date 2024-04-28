@@ -1,4 +1,4 @@
-#define _GNU_SOURCE         /* for memmem, the bad search  */
+#define _GNU_SOURCE         /* for memmem, the "bad" search  */
 
 #include "endGadgetFind.h"
 
@@ -8,7 +8,7 @@
 
 #include <stdio.h>
 
-//for the bad search:
+//for the "bad" search:
 #include <string.h>
 
 static int initRETIntel(ArchInfo *arch_p);
