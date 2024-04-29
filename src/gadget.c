@@ -56,7 +56,8 @@ gadgetGeneral gadgetGeneralCreateWithInstruction(miniInstruction instruction, ui
     }
     memcpy(&(gadgetG.first->minInstruction), &instruction, sizeof(miniInstruction));
 
-    gadgetG.first->refrences = 0;
+    //the gadget itself is a refrence itself, so 1 and not 0.
+    gadgetG.first->references = 1;
     gadgetG.first->next = NULL;
 
 
@@ -107,11 +108,12 @@ gadgetGeneral gadgetGeneralCreateWithGadget(gadget firstGadget, uint64_t vaddr, 
 */
 void gadgetFreeAll(gadget *gadget_p){
     gadget *nextGadget;
-    while(gadget_p != NULL && gadget_p->refrences == 0){
+    (gadget_p->references)--;
+    while(gadget_p != NULL && gadget_p->references == 0){
         nextGadget = gadget_p->next;
         free(gadget_p);
         if(nextGadget)
-            (nextGadget->refrences)--;
+            (nextGadget->references)--;
         gadget_p = nextGadget;
     }
 }
@@ -186,12 +188,11 @@ int gadgetGeneralNodeAddInstruction(gadgetGeneralNode *gadgetGeneralNode_p, mini
         err("Error in malloc for gadgetAdd, in gadgetGeneralNodeAddInstruction of size %zu.", sizeof(gadget *));
         return -1;
     }
-    
     memcpy(&(gadgetAdd->minInstruction), &instruction, sizeof(miniInstruction));
 
     gadgetAdd->next = gadgetGeneralNode_p->gadgetG.first;
     
-    gadgetAdd->refrences = 1;
+    gadgetAdd->references = 1;
 
     gadgetGeneralNode_p->gadgetG.first = gadgetAdd->next;
 
@@ -322,8 +323,8 @@ gadgetGeneralLinkedListEnds expandInstructionDown(char *buffer, uint64_t buf_vad
 static gadgetGeneralLinkedListEnds _expandInstructionDownR(char *buffer, size_t bufferSize, size_t bufferInstructionOffset, gadgetGeneralNode *fatherGadgetGeneralNode, ZydisDecodedInstruction *decodedInstructionStart_p, size_t depth){
     
     
-    gadget firstGadget = {.next=fatherGadgetGeneralNode->gadgetG.first, .refrences=0};
-    //later I will increase the refrences (after I see there are no errors.)
+    gadget firstGadget = {.next=fatherGadgetGeneralNode->gadgetG.first, .references=0};
+    //later I will increase the references (after I see there are no errors.)
     
     firstGadget.minInstruction.instructionLength = decodedInstructionStart_p->length;
     firstGadget.minInstruction.mnemonic = decodedInstructionStart_p->mnemonic;
@@ -343,7 +344,7 @@ static gadgetGeneralLinkedListEnds _expandInstructionDownR(char *buffer, size_t 
     }
     
 
-    (fatherGadgetGeneralNode->gadgetG.first->refrences)++;
+    (fatherGadgetGeneralNode->gadgetG.first->references)++;
 
     resultGeneralNode->gadgetG.length = fatherGadgetGeneralNode->gadgetG.length + 1;
 
@@ -499,14 +500,14 @@ void gadgetGeneralNodeShowAllCombined(gadgetGeneralNode *gadgetGNode_p){
  * TODO: split to more functions. and combine with the other shows.
 */
 void gadgetGeneralNodeShowOnlyEnds(gadgetGeneralNode *gadgetGNode_p){
-    //simply look at the refrences, if it is 0 it is an end.
+    //simply look at the references, if it is 0 it is an end.
     ZydisDecodedInstruction decodedInstruction;
     gadget *curGadget_p;
     ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
     char decodedBuffer[256];
 
     for(;gadgetGNode_p != NULL; gadgetGNode_p = gadgetGNode_p->next){
-        if (gadgetGNode_p->gadgetG.first->refrences != 0)
+        if (gadgetGNode_p->gadgetG.first->references != 1)
             continue;
 
         printf("0x%" PRIx64 ": ", gadgetGNode_p->gadgetG.vaddr);

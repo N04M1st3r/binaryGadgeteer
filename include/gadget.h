@@ -31,7 +31,7 @@ typedef struct miniInstruction
 //doing it like so so I can expand a gadget easily on demand.
 typedef struct gadget{
     miniInstruction minInstruction;
-    size_t refrences; //counts the number of refrences
+    size_t references; //counts the number of references
     struct gadget *next;
 } gadget;
 
