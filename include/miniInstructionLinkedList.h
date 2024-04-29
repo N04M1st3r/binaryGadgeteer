@@ -1,6 +1,7 @@
 #pragma once
 
 #include <inttypes.h>
+#include <Zydis/Zydis.h>
 #include <stdio.h>
 
 #define MAX_MEMONIC_OPCODE_LEN 3
@@ -37,6 +38,7 @@ typedef struct MiniBranchInstruction{ //saving the minimum info needed on the in
     uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN];       /*Max mnemonicOpcode/startOpcode length is 3 (according to intel manual), start opcode*/
     uint8_t mnemonicOpcodeSize;
     uint8_t additionSize;
+    ZydisMnemonic mnemonic;
 } MiniBranchInstruction; //YOU ARE NOT SUPPOUS TO CREATE OBJECT OF THIS, just use miniInstructionLinkedListFreeNoInstructionInfo
 
 typedef struct MiniBranchInstructionNode{
@@ -50,7 +52,7 @@ typedef struct MiniBranchInstructionLinkedList{
 } MiniBranchInstructionLinkedList;
 
 
-int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *, uint8_t mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize);
+int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *, uint8_t mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize, ZydisMnemonic mnemonic);
 
 void miniInstructionLinkedListCombine(MiniBranchInstructionLinkedList *into, MiniBranchInstructionLinkedList *from);
 

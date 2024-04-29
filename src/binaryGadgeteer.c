@@ -9,7 +9,7 @@
 
 #include "endGadgetFind.h"
 
-//#include "gadget.h" //it is contaminated
+#include "gadget.h" //it is contaminated
 
 #include "gadgetLinkedList.h"
 
@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
         size_t readAmount;
         for (;offset < curMiniHdrNode->cur_mini_phdr.size; offset += readAmount){
             //doing this to go a bit back for instructions that need to go a bit back. (but I don't want to go back in the first one)
-            offset = 0 > offset-prefixSize ? 0 : offset - prefixSize;
+            offset = prefixSize > offset ? 0 : offset - prefixSize;
 
             readAmount = curMiniHdrNode->cur_mini_phdr.size - offset;
             readAmount = readAmount > READ_AMOUNT ? READ_AMOUNT : readAmount;
@@ -265,23 +265,16 @@ int main(int argc, char *argv[])
 
 
     //now I will go into more depth in each one.
-
-    gadgetLLFreeAll(allGadgetsLL);
-    
-    /*allGadgetsGeneralEnds.start = allGadgetsGeneralEnds.start->next;
-    gadgetGeneralNodeFreeCurrent(allGadgetsGeneralNodeStart);
-    if(allGadgetsGeneralEnds.end == allGadgetsGeneralNodeStart){
-        //if it is equal it means no gadgets are found (WTF) but checking just in case.
-        allGadgetsGeneralEnds.end = NULL;
-    }
-
-    //gadgetGeneralNodeShowAll(allGadgetsGeneralEnds.start);
-    gadgetGeneralNodeShowOnlyEnds(allGadgetsGeneralEnds.start);
+    GadgetLLShowAll(allGadgetsLL);
+    GadgetLLShowOnlyEnds(allGadgetsLL);
 
     //can also maybe sort by whatever with merge sort, https://www.geeksforgeeks.org/sorting-a-singly-linked-list/
 
 
-    gadgetGeneralNodeFreeAll(allGadgetsGeneralEnds.start);*/
+
+    //Frees:
+    gadgetLLFreeAll(allGadgetsLL);
+
     free(buffer);
 
     freeArchInfo(arch_p);

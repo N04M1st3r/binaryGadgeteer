@@ -8,14 +8,15 @@ static void MiniBranchInstructionLinkedListInit(MiniBranchInstructionLinkedList 
 /**
  * Adding miniInstruction to miniInstructionLL_p, will add to the start.
  * 
- * @param mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], miniInstruction mnemonic part of the opcode.
- * @param mnemonicOpcodeSize, the opcode mnemonic size (max is MAX_MEMONIC_OPCODE_LEN/3).
- * @param additionSize, the addition size that needs to be added for the opcode (the operands).
- * @param miniInstructionLL_p, mini instruction linked list pointer.
+ * @param mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN] miniInstruction mnemonic part of the opcode.
+ * @param mnemonicOpcodeSize the opcode mnemonic size (max is MAX_MEMONIC_OPCODE_LEN/3).
+ * @param additionSize  the addition size that needs to be added for the opcode (the operands).
+ * @param miniInstructionLL_p mini instruction linked list pointer.
+ * @param mnemonic the zydis mnemonic number, can derive this myself but it is more easy like this.
  * 
  * @return 0 on sucess. -1 and such on error.
 */
-int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *miniInstructionLL_p, uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize){
+int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *miniInstructionLL_p, uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize, ZydisMnemonic mnemonic){
     MiniBranchInstructionNode *newNode = (MiniBranchInstructionNode *)malloc(sizeof(MiniBranchInstructionNode));
     if (newNode == NULL){
         err("Error in Malloc inside miniInstructionLinkedListAdd, for newNode of size %ld.", sizeof(MiniBranchInstructionNode));
@@ -25,6 +26,7 @@ int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *miniInstructio
     newNode->instructionInfo.additionSize = additionSize;
     newNode->instructionInfo.mnemonicOpcodeSize = mnemonicOpcodeSize;
     memcpy(newNode->instructionInfo.mnemonicOpcode, mnemonicOpcode, MAX_MEMONIC_OPCODE_LEN);
+    newNode->instructionInfo.mnemonic = mnemonic;
 
     newNode->next = miniInstructionLL_p->start;
 

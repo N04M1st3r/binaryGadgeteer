@@ -15,19 +15,23 @@ static int initRETIntel(ArchInfo *arch_p);
 static int initJMPIntel(ArchInfo *arch_p);
 static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t addr_file, size_t bufferSize, MiniBranchInstructionLinkedList *curInstructionN_p);
 
-#define Intel_mnemonicOpcode_RET_Near (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3}
+
+
+//my theory: first ?(4) bits, the instruction, then bit[4](5th) tells if FAR, then bit[7](8th) tells imm16 or not.
+#define Intel_mnemonicOpcode_RET_Near (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3} //0b11000011
 #define Intel_mnemonicOpcodeSize_RET_Near 1
 #define Intel_additionalSize_RET_Near 0
 
-#define Intel_mnemonicOpcode_RET_FAR (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCB}
+#define Intel_mnemonicOpcode_RET_FAR (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCB} //0b11001011
 #define Intel_mnemonicOpcodeSize_RET_FAR 1
 #define Intel_additionalSize_RET_FAR 0 
 
-#define Intel_mnemonicOpcode_RET_Near_imm16 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC2}
+#define Intel_mnemonicOpcode_RET_Near_imm16 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC2} //0b11000010
 #define Intel_mnemonicOpcodeSize_RET_Near_imm16 1
 #define Intel_additionalSize_RET_Near_imm16 2
 
-#define Intel_mnemonicOpcode_RET_Far_imm16 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCA}
+
+#define Intel_mnemonicOpcode_RET_Far_imm16 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCA} //0b11001010
 #define Intel_mnemonicOpcodeSize_RET_Far_imm16 1
 #define Intel_additionalSize_RET_Far_imm16 2
 
@@ -84,7 +88,9 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
         char *location;
 
         uint8_t curInstructionLength = curInstructionN_p->instructionInfo.additionSize + curInstructionN_p->instructionInfo.mnemonicOpcodeSize;
-        uint8_t curInstructionMnemonic = curInstructionN_p->instructionInfo.mnemonicOpcode;
+        
+        //what:
+        ZydisMnemonic curInstructionMnemonic = curInstructionN_p->instructionInfo.mnemonic; //ERROR HEREEEEEE TODO FIX!!!
 
         while ( (location = memmem(buffer_p, bufferSize - (buffer_p-buffer), curInstructionN_p->instructionInfo.mnemonicOpcode, curInstructionN_p->instructionInfo.mnemonicOpcodeSize)) ){
             //Found :)
@@ -256,10 +262,10 @@ static int initRETIntel(ArchInfo *arch_p){
     //not doing this in a pointer because a mini instruction is 5 bytes where a pointer is 8. (in 64 bit machines)
     
     //error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3, 0, 0}, 1, 0);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Near, Intel_mnemonicOpcodeSize_RET_Near, Intel_additionalSize_RET_Near);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_FAR, Intel_mnemonicOpcodeSize_RET_FAR, Intel_additionalSize_RET_FAR);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Near_imm16, Intel_mnemonicOpcodeSize_RET_Near_imm16, Intel_additionalSize_RET_Near_imm16);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Far_imm16, Intel_mnemonicOpcodeSize_RET_Far_imm16, Intel_additionalSize_RET_Far_imm16);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Near, Intel_mnemonicOpcodeSize_RET_Near, Intel_additionalSize_RET_Near, ZYDIS_MNEMONIC_RET);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_FAR, Intel_mnemonicOpcodeSize_RET_FAR, Intel_additionalSize_RET_FAR, ZYDIS_MNEMONIC_RET);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Near_imm16, Intel_mnemonicOpcodeSize_RET_Near_imm16, Intel_additionalSize_RET_Near_imm16, ZYDIS_MNEMONIC_RET);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Far_imm16, Intel_mnemonicOpcodeSize_RET_Far_imm16, Intel_additionalSize_RET_Far_imm16, ZYDIS_MNEMONIC_RET);
     
     //LL    mnemonicOpcode[3]   mnemonicOpcodeSize    additionSize
     if (error){
