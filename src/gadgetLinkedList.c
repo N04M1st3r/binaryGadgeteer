@@ -84,6 +84,33 @@ GadgetNode *GadgetNodeCreate(MiniInstructionNode *instNode, uint64_t addr_file, 
 }
 
 
+/**
+ * Creates a GadgetLL * where its next is nextGadget_p->first and all its details are from decodedInstruction_p, and nextGadget_p.
+ * 
+ * @param decodedInstruction_p decoded instruction to copy from the instruction things.
+ * @param nextGadget_p the gadget that made this gadget, the one after it when executing.
+ * 
+ * @return GadgetLL * as stated in the description, if error NULL.
+ * 
+ * @note Mallocing, free with the free functions for GadgetNode when done.
+*/
+GadgetNode *GadgetNodeCreateFromDecodedInstAndNextGadget(ZydisDecodedInstruction *decodedInstruction_p, GadgetNode *nextGadget_p, char *bufferDecode, ZyanU64 runtime_address){
+    MiniInstructionNode *newMiniInst = MiniInstructionNodeCreate(decodedInstruction_p->mnemonic, decodedInstruction_p->length, bufferDecode, nextGadget_p->first);
+    if (newMiniInst == NULL){
+        err("Error in GadgetNodeCreateFromDecodedInstAndNextGadget while calling MiniInstructionNodeCreate.");
+        return NULL;
+    }
+
+    GadgetNode *newGadgetNode = GadgetNodeCreate(newMiniInst, nextGadget_p->addr_file - decodedInstruction_p->length, runtime_address);
+    if (newGadgetNode == NULL){
+        err("Error in GadgetNodeCreateFromDecodedInstAndNextGadget while calling GadgetNodeCreate");
+        MiniInstructionNodeFree(newMiniInst);
+        return NULL;
+    }
+
+    return newGadgetNode;
+}
+
 
 
 /**

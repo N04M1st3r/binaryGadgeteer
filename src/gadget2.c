@@ -40,7 +40,7 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
         #define OffsetInBuffer curGadget->addr_file - buf_fileOffset;
         char *bufferDecode = buffer + OffsetInBuffer;
 
-        uint64_t runtime_address = curGadget->vaddr;
+        ZyanU64 runtime_address = curGadget->vaddr;
 
         for(size_t i = 1; i <= ZYDIS_MAX_INSTRUCTION_LENGTH; i++, runtime_address--, bufferDecode--){
             if(bufferDecode < buffer){
@@ -58,35 +58,20 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
             if (decodedInstruction.length != i)
                 continue;
             
-            //maybe put all this into a function:
-            MiniInstructionNode *newMiniInst = MiniInstructionNodeCreate(decodedInstruction.mnemonic, decodedInstruction.length, bufferDecode, curGadget->first);
-            if (newMiniInst == NULL){
-                err("Error in expandGadgetsDown while calling MiniInstructionNodeCreate.");
-                //first fake getting rid and clean:
+            GadgetNode *newGadgetNode = GadgetNodeCreateFromDecodedInstAndNextGadget(&decodedInstruction, curGadget, bufferDecode, runtime_address);
+            if ( newGadgetNode == NULL ){
+                err("Error in expandGadgetsDown while calling GadgetNodeCreateFromDecodedInstAndNextGadget.");
+
+                ////getting rid of the first fake
                 curLevelGadgetLL->start = curLevelGadgetLL->start->next;
                 if(curLevelGadgetLL->end == &fakeNode)
                     curLevelGadgetLL->end = NULL;
+                //freeing everyone because error.
                 gadgetLLFreeAll(curLevelGadgetLL);
                 return NULL;
             }
-
-            GadgetNode *newGadgetNode = GadgetNodeCreate(newMiniInst, curGadget->addr_file - decodedInstruction.length, runtime_address);
-            if (newGadgetNode == NULL){
-                err("Error in expandGadgetsDown while calling GadgetNodeCreate");
-                MiniInstructionNodeFree(newMiniInst);
-
-                //first fake getting rid and clean:
-                curLevelGadgetLL->start = curLevelGadgetLL->start->next;
-                if(curLevelGadgetLL->end == &fakeNode)
-                    curLevelGadgetLL->end = NULL;
-                gadgetLLFreeAll(curLevelGadgetLL);
-                return NULL;
-            }
-            //
-
 
             GadgetLLAddGadgetNode(curLevelGadgetLL, newGadgetNode);
-
         }
     }
 
@@ -103,7 +88,6 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
 
     return curLevelGadgetLL;
 }
-
 
 
 

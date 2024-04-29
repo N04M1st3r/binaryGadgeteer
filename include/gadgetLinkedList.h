@@ -66,8 +66,12 @@ void GadgetLLAddGadgetNode(GadgetLL *gadgetsLL, GadgetNode *curGadgetNode);
 
 /* Malloc related */
 GadgetLL *gadgetLLCreate(GadgetNode *first);
-MiniInstructionNode *MiniInstructionNodeCreate(ZydisMnemonic mnemonic, ZyanU8 instructionLength, char *fullOpcode, MiniInstructionNode *next);
+
 GadgetNode *GadgetNodeCreate(MiniInstructionNode *instNode, uint64_t addr_file, ZyanU64 vaddr);
+GadgetNode *GadgetNodeCreateFromDecodedInstAndNextGadget(ZydisDecodedInstruction *decodedInstruction_p, GadgetNode *nextGadget_p, char *bufferDecode, ZyanU64 runtime_address);
+
+MiniInstructionNode *MiniInstructionNodeCreate(ZydisMnemonic mnemonic, ZyanU8 instructionLength, char *fullOpcode, MiniInstructionNode *next);
+
 
 /* Free related */
 void gadgetLLFreeAll(GadgetLL *gadgetLL);
