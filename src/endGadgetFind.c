@@ -13,7 +13,7 @@
 
 static int initRETIntel(ArchInfo *arch_p);
 static int initJMPIntel(ArchInfo *arch_p);
-static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buffer, size_t bufferSize, MiniBranchInstructionNode *curInstructionN_p);
+static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buffer, size_t bufferSize, MiniBranchInstructionLinkedList *curInstructionN_p);
 
 #define Intel_mnemonicOpcode_RET_Near (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3}
 #define Intel_mnemonicOpcodeSize_RET_Near 1
@@ -50,8 +50,7 @@ FoundLocationsBufferNode *searchBranchInstructionsInBuffer(char *buffer, size_t 
 
     //can later maybe make this better with ahoCorasick algorithm.
     
-    MiniBranchInstructionLinkedList *allBranchInstructionsMiniInstructionLL = arch_p->retEndings->start;
-
+    MiniBranchInstructionLinkedList *allBranchInstructionsMiniInstructionLL = arch_p->retEndings;
 
     /*FoundLocationsBufferNode *RETs = searchRetInBuffer(buffer, bufferSize, arch_p);
     if(RETs == NULL){
@@ -83,15 +82,16 @@ FoundLocationsBufferNode *searchBranchInstructionsInBuffer(char *buffer, size_t 
  * 
  * @param buffer the buffer.
  * @param bufferSize the bufferSize
- * @param MiniBranchInstructionNode* A linked list of branch instructions to search in the buffer.
+ * @param MiniBranchInstructionLinkedList* A linked list of branch instructions to search in the buffer.
  * 
  * @return FoundLocationsBufferNode*, a linked list of all the location it found.
  *          returning NULL when none found in buffer.
  * 
  * @note This is using malloc, remember to free at the end with FoundLocationsBufferNodeFree
  */
-static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buffer, size_t bufferSize, MiniBranchInstructionNode *curInstructionN_p){
+static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buffer, size_t bufferSize, MiniBranchInstructionLinkedList *miniBarnchInstructionLL){
     FoundLocationsBufferNode *resultNode = NULL;
+    MiniBranchInstructionNode *curInstructionN_p = miniBarnchInstructionLL->start;
 
     for(;curInstructionN_p != NULL; curInstructionN_p = curInstructionN_p->next){
         char *buffer_p = buffer;
@@ -157,7 +157,7 @@ FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, Arc
 
     //For now I will do a bad search, I will make it better in the future!    
 
-    return searchMiniBranchInstructionsInBuffer(buffer, bufferSize, arch_p->retEndings->start);
+    return searchMiniBranchInstructionsInBuffer(buffer, bufferSize, arch_p->retEndings);
 
     /*
     //works:
