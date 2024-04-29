@@ -46,38 +46,15 @@ static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buff
  * @note This is using malloc, remember to free at the end with FoundLocationsBufferNodeFree
 */
 FoundLocationsBufferNode *searchBranchInstructionsInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p){
-    FoundLocationsBufferNode *result = NULL;
-
-    //can later maybe make this better with ahoCorasick algorithm.
+    
     
     MiniBranchInstructionLinkedList *allBranchInstructionsMiniInstructionLL = arch_p->retEndings;
+    miniInstructionLinkedListCombine(allBranchInstructionsMiniInstructionLL, arch_p->jmpEndings);
 
-    /*FoundLocationsBufferNode *RETs = searchRetInBuffer(buffer, bufferSize, arch_p);
-    if(RETs == NULL){
-        err("Error, inside searchBranchInstructionsInBuffer, while calling searchRetInBuffer.");
-        FoundLocationsBufferNodeFree(result);
-        return NULL;
-    }
-    RETs->next = result;
-    result = RETs;
-
-    
-    FoundLocationsBufferNode *JMPs = searchJmpInBuffer(buffer, bufferSize, arch_p);
-    if(JMPs == NULL){
-        err("Error, inside searchBranchInstructionsInBuffer, while calling searchJmpInBuffer.");
-        FoundLocationsBufferNodeFree(result);
-        return NULL;
-    }
-    JMPs->next = result;
-    result = JMPs;*/
-
-    return result;
+    return searchMiniBranchInstructionsInBuffer(buffer, bufferSize, allBranchInstructionsMiniInstructionLL);
 }
 
 /**
- * This is temporary, create a full search strings so it will also work for others later,
- * and maybe use regex or implement ahoCorasick.
- * 
  * This searches for all MiniBranchInstructions in MiniBranchInstructionNode that occurnces in a buffer and returns those indexies.
  * 
  * @param buffer the buffer.
@@ -90,6 +67,8 @@ FoundLocationsBufferNode *searchBranchInstructionsInBuffer(char *buffer, size_t 
  * @note This is using malloc, remember to free at the end with FoundLocationsBufferNodeFree
  */
 static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buffer, size_t bufferSize, MiniBranchInstructionLinkedList *miniBarnchInstructionLL){
+    //can later maybe make this better with ahoCorasick algorithm. (or just regular regex)
+
     FoundLocationsBufferNode *resultNode = NULL;
     MiniBranchInstructionNode *curInstructionN_p = miniBarnchInstructionLL->start;
 
@@ -123,10 +102,25 @@ static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buff
     return resultNode;
 }
 
+
 /**
- * This is temporary, create a full search strings so it will also work for others later,
- * and maybe use regex or implement ahoCorasick.
+ * This searches for all jmp occurnces in a buffer and returns those indexies.
  * 
+ * @param buffer the buffer.
+ * @param bufferSize the bufferSize
+ * @param arch_p the ArchInfo which contains info about this spesific architecture, and how to parse it.
+ * 
+ * @return FoundLocationsBufferNode*, a linked list of all the location it found.
+ *          returning NULL when none found in buffer.
+ * 
+ * @note This is using malloc, remember to free at the end with FoundLocationsBufferNodeFree
+ */
+FoundLocationsBufferNode *searchJmpInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p){
+    return searchMiniBranchInstructionsInBuffer(buffer, bufferSize, arch_p->jmpEndings);
+}
+
+
+/**
  * This searches for all ret occurnces in a buffer and returns those indexies.
  * 
  * @param buffer the buffer.
@@ -158,40 +152,6 @@ FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, Arc
     //For now I will do a bad search, I will make it better in the future!    
 
     return searchMiniBranchInstructionsInBuffer(buffer, bufferSize, arch_p->retEndings);
-
-    /*
-    //works:
-    FoundLocationsBufferNode *resultNode = NULL;
-
-    MiniBranchInstructionNode *curInstructionN_p =  arch_p->retEndings->start; 
-    for(;curInstructionN_p != NULL; curInstructionN_p = curInstructionN_p->next){
-        char *buffer_p = buffer;
-        char *location;
-
-        while ( (location = memmem(buffer_p, bufferSize - (buffer_p-buffer), curInstructionN_p->instructionInfo.mnemonicOpcode, curInstructionN_p->instructionInfo.mnemonicOpcodeSize)) ){
-            //Found :)
-
-            //printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld FINAL: 0x%" PRIx64 "\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer, buf_vaddr+location - buffer);
-            //each one I find I will write its address
-
-            FoundLocationsBufferNode *bufferLocationNode_p = (FoundLocationsBufferNode *) malloc(sizeof(FoundLocationsBufferNode));
-            if ( bufferLocationNode_p == NULL ){
-                err("Error in malloc, inside searchRetInBuffer, while allocating for bufferLocationNode_p, size %ld.", sizeof(FoundLocationsBufferNode));
-                FoundLocationsBufferNodeFree(resultNode);
-                return NULL;
-            }
-            bufferLocationNode_p->offset = location - buffer;
-            bufferLocationNode_p->miniInstructionInfo = curInstructionN_p->instructionInfo;
-            
-            bufferLocationNode_p->next = resultNode;
-            resultNode = bufferLocationNode_p;
-
-            buffer_p = location + curInstructionN_p->instructionInfo.mnemonicOpcodeSize;
-        }
-    }
-
-
-    return resultNode;*/
 }
 
 

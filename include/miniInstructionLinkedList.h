@@ -52,6 +52,8 @@ typedef struct MiniBranchInstructionLinkedList{
 
 int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *, uint8_t mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize);
 
+void miniInstructionLinkedListCombine(MiniBranchInstructionLinkedList *into, MiniBranchInstructionLinkedList *from);
+
 MiniBranchInstructionLinkedList *miniInstructionLinkedListCreate(void);
 
 //use this with miniInstructionLinkedListAdd.
