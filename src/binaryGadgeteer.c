@@ -190,14 +190,10 @@ int main(int argc, char *argv[])
         err("Error, getAllExec_Mini_Phdr returned NULL, no program headers.");
         return 2;
     }
+    //todo: do combine phdr, to combine exexutable program headers (they are suppous to be together but just in case)
 
     Mini_ELF_Phdr_node *curMiniHdrNode = head;
     
-    //until I read cur->size
-    //TODO: add some zeros to the right and left on the start (first read)
-    // (and take from last one) ZYDIS_MAX_INSTRUCTION_LENGTH
-    
-    //implement this later!
     #define searchAheadInstructions 2 //do that this will be depth maybe
     size_t prefixSize = ZYDIS_MAX_INSTRUCTION_LENGTH*searchAheadInstructions; //before the offset.
     if(READ_AMOUNT < prefixSize){
@@ -217,31 +213,16 @@ int main(int argc, char *argv[])
         return 4;
     }
 
-    ZydisDecoder decoder; //decoder
-    if (!ZYAN_SUCCESS(ZydisDecoderInit(&decoder, arch_p->machine_mode, arch_p->stack_width))){
-        err("some error initiating decoder.");
+    if(initDecoderAndFormatter(arch_p)){
+        err("Error inside main, while calling initDecoderAndFormatter.");
         return 5;
     }
-    
-    //the style of the assembly:
-    ZydisFormatter formatter;
-    ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
 
-    //initDecoderAndFormatter(&decoder, &formatter);
     
-    /*gadgetGeneralNode *allGadgetsGeneralNodeStart = gadgetGeneralNodeCreate((gadgetGeneral) {.addr_file=0, .checked=true, .length=0, .vaddr=0, .first=NULL});
-    if (allGadgetsGeneralNodeStart == NULL){
-        err("Error while getting allGadgetsGeneralNodeStart at gadgetGeneralNodeCreate in main.");
-        return 5;
-    }
-    gadgetGeneralLinkedListEnds allGadgetsGeneralEnds = {.start=allGadgetsGeneralNodeStart, .end=allGadgetsGeneralNodeStart};*/
-    //entering a fakeNode 
+
     GadgetLL *allGadgetsLL = NULL; 
  
-    //TODO: implement so it will go a little back when checking! MUST!
     while(curMiniHdrNode != NULL){
-        //zeroing it out so it wouldnt say there is an instruction that there isn't
-        //offset from beggening
         uint64_t offset = 0;
         size_t readAmount;
         for (;offset < curMiniHdrNode->cur_mini_phdr.size; offset += readAmount){
@@ -253,59 +234,31 @@ int main(int argc, char *argv[])
 
             uint64_t buf_vaddr = curMiniHdrNode->cur_mini_phdr.vaddr + offset;
             uint64_t buf_fileOffset = curMiniHdrNode->cur_mini_phdr.file_offset + offset;
-            //printf("reading.\n");
             if (readFileData( buf_fileOffset , readAmount, buffer)){
                 err("error in readFileData at main.");
                 return 6;
             }
 
             
-            //foundLocations = searchInBuffer()
-            //printf("now location: 0x%" PRIx64 " which is offset 0x%" PRIx64 ";\n", buf_vaddr, offset);
-
-            GadgetLL *currentGadgets = searchBranchInstructionsInBuffer(buffer, buf_vaddr, buf_fileOffset, readAmount, arch_p);
-            if(currentGadgets == NULL)
+            GadgetLL *currentBranchGadgets = searchBranchInstructionsInBuffer(buffer, buf_vaddr, buf_fileOffset, readAmount, arch_p);
+            if(currentBranchGadgets == NULL)
                 continue; //NON found, continue to next one.
-
-            //this is checked everytime but this is more understandable so I like it more like this.
-            
-            
 
             
             //now here I will add them to all my gadgets
 
-            //printf("woho found :)");
-            //printf("cur: 0x%" PRIx64 "\n", buf_vaddr);
-            /*FoundLocationsBufferNode *curBranchInstructionLocation = locations;
+            GadgetLL *allCurGadgets = expandGadgetsDown(buffer, buf_vaddr, buf_fileOffset, readAmount, currentBranchGadgets, 2);
 
-            //int debugDELLATER = 0;
-            for(; curBranchInstructionLocation != NULL; curBranchInstructionLocation = curBranchInstructionLocation->next){
-                //if(++debugDELLATER == 5)
-                //    exit(90);
-                //printf("%d\n", debugDELLATER);
-                
-                gadgetGeneralLinkedListEnds curGadgetsGNodeEnds = expandInstructionDown(buffer, buf_vaddr, buf_fileOffset, readAmount, curBranchInstructionLocation, ZYDIS_MNEMONIC_RET, 3);
-                if (curGadgetsGNodeEnds.start == NULL){
-                    err("Error in expandInstructionDown, into curGadgetGeneralNode inside main.");
-                    return 7;
-                }
+            GadgetLLCombine(allCurGadgets, currentBranchGadgets);
+            gadgetLLFreeOnly(currentBranchGadgets);
 
-                allGadgetsGeneralEnds.end->next = curGadgetsGNodeEnds.start;
-                allGadgetsGeneralEnds.end = curGadgetsGNodeEnds.end;
-
-                //printf("showing:\n");
-                //gadgetGeneralNodeShowAll(curGadgetsGNodeEnds.start);
-            }
-            FoundLocationsBufferNodeFree(locations);*/
-            expandInstructionsDown(buffer, buf_vaddr, buf_fileOffset, readAmount, currentGadgets);
-
-
+            //this is checked everytime but this is more understandable so I like it more like this.
             if(allGadgetsLL == NULL){
-                allGadgetsLL = currentGadgets;
+                allGadgetsLL = allCurGadgets;
                 continue;
             }
-
-            GadgetLLCombine(allGadgetsLL, currentGadgets);
+            GadgetLLCombine(allGadgetsLL, allCurGadgets);
+            gadgetLLFreeOnly(allCurGadgets);
         }
         curMiniHdrNode = curMiniHdrNode->next;
     }
@@ -313,7 +266,7 @@ int main(int argc, char *argv[])
 
     //now I will go into more depth in each one.
 
-
+    gadgetLLFreeAll(allGadgetsLL);
     
     /*allGadgetsGeneralEnds.start = allGadgetsGeneralEnds.start->next;
     gadgetGeneralNodeFreeCurrent(allGadgetsGeneralNodeStart);

@@ -48,9 +48,13 @@ MiniInstructionNode *MiniInstructionNodeCreate(ZydisMnemonic mnemonic, ZyanU8 in
     memcpy(res->miniInst.instructionFullOpcode, fullOpcode, instructionLength);
     
     //he himself.
-    res->refCnt = 1; 
-    
+    res->refCnt = 1;
+
     res->next = next;
+    if(next != NULL){
+        next->refCnt += 1;
+    }
+    
     return res;
 }
 
@@ -62,7 +66,7 @@ MiniInstructionNode *MiniInstructionNodeCreate(ZydisMnemonic mnemonic, ZyanU8 in
  * 
  * @return An allocated GadgetNode *, if error then NULL.
  * 
- * @note this is using malloc, remember to free with gadgetNodeFreeCurrent
+ * @note this is using malloc, remember to free with gadgetNodeFreeCurrentAll or..
 */
 GadgetNode *GadgetNodeCreate(MiniInstructionNode *instNode, uint64_t addr_file, ZyanU64 vaddr){
     GadgetNode *res = (GadgetNode *)malloc(sizeof(GadgetNode));
@@ -93,11 +97,30 @@ void gadgetLLFreeAll(GadgetLL *gadgetLL){
 
     while(cur != NULL){
         next = cur->next;
-        gadgetNodeFreeCurrent(cur);
+        gadgetNodeFreeCurrentAll(cur);
         cur = next;
     }
     
     free(gadgetLL);
+}
+
+/**
+ * Frees only the gadgetLL.
+ * 
+ * @note assuming gadgetLL != NULL.
+*/
+void gadgetLLFreeOnly(GadgetLL *gadgetLL){
+    free(gadgetLL);
+}
+
+
+/**
+ * Frees gadgetNode in a safe way.
+ * 
+ * @note assuming gadgetNode != NULL.
+*/
+void gadgetNodeFreeCurrentOnly(GadgetNode *gadgetNode){
+    free(gadgetNode);
 }
 
 /**
@@ -106,7 +129,7 @@ void gadgetLLFreeAll(GadgetLL *gadgetLL){
  * @note assuming gadgetNode != NULL and gadgetNode->first != NULL.
  * @note not freeing next.
 */
-void gadgetNodeFreeCurrent(GadgetNode *gadgetNode){
+void gadgetNodeFreeCurrentAll(GadgetNode *gadgetNode){
     MiniInstructionNodeFree(gadgetNode->first);
     free(gadgetNode);
 }
@@ -142,6 +165,7 @@ void MiniInstructionNodeFree(MiniInstructionNode *cur){
  * @note dest will be changed, but src will not be changed, although the variables inside them are the same.
  * @note assuming dest!=NULL.
  * @note asuuming there will not be integer overflow while combining the sizes.
+ * @note if you are no longer using src, run gadgetLLFreeOnly on it.
 */
 void GadgetLLCombine(GadgetLL *dest, GadgetLL *src){
     if(src == NULL || src->size==0)
@@ -151,4 +175,17 @@ void GadgetLLCombine(GadgetLL *dest, GadgetLL *src){
     dest->end = src->end;
 
     dest->size += src->size;
+}
+
+
+/**
+ * Adding curGadgetNode to gadgetsLL.
+ * 
+ * @param gadgetsLL The gadgets linked list.
+ * @param curGadgetNode the GadgetNode* to add. 
+*/
+void GadgetLLAddGadgetNode(GadgetLL *gadgetsLL, GadgetNode *curGadgetNode){
+    gadgetsLL->end->next = curGadgetNode;
+    gadgetsLL->end = curGadgetNode;
+    (gadgetsLL->size)++;
 }

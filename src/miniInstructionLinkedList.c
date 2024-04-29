@@ -98,7 +98,10 @@ void miniInstructionLinkedListFreeRegular(MiniBranchInstructionLinkedList *miniI
 */
 void miniInstructionLinkedListCombine(MiniBranchInstructionLinkedList *into, MiniBranchInstructionLinkedList *from){
     //algorithm: going to the end(by looking at the next) of into and adding from->start, then adding it's size.
-
+    if(from == NULL){
+        //nothing to do.
+        return;
+    }
     if(into->size == 0){
         into->start = from->start;
         into->size = from->size;

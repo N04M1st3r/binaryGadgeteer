@@ -61,13 +61,20 @@ typedef struct GadgetLL{
 } GadgetLL;
 
 
+void GadgetLLCombine(GadgetLL *dest, GadgetLL *src);
+void GadgetLLAddGadgetNode(GadgetLL *gadgetsLL, GadgetNode *curGadgetNode);
+
+/* Malloc related */
 GadgetLL *gadgetLLCreate(GadgetNode *first);
 MiniInstructionNode *MiniInstructionNodeCreate(ZydisMnemonic mnemonic, ZyanU8 instructionLength, char *fullOpcode, MiniInstructionNode *next);
 GadgetNode *GadgetNodeCreate(MiniInstructionNode *instNode, uint64_t addr_file, ZyanU64 vaddr);
 
+/* Free related */
 void gadgetLLFreeAll(GadgetLL *gadgetLL);
-void gadgetNodeFreeCurrent(GadgetNode *gadgetNode);
+void gadgetLLFreeOnly(GadgetLL *gadgetLL);
+
+void gadgetNodeFreeCurrentOnly(GadgetNode *gadgetNode);
+void gadgetNodeFreeCurrentAll(GadgetNode *gadgetNode);
+
 void MiniInstructionNodeFree(MiniInstructionNode *cur);
 
-
-void GadgetLLCombine(GadgetLL *dest, GadgetLL *src);

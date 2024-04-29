@@ -47,13 +47,10 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
 */
 GadgetLL *searchBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t bufferAddrFile, size_t bufferSize, ArchInfo *arch_p){
     
-    
     MiniBranchInstructionLinkedList *allBranchInstructionsMiniInstructionLL = arch_p->retEndings;
     miniInstructionLinkedListCombine(allBranchInstructionsMiniInstructionLL, arch_p->jmpEndings);
 
-    GadgetLL *foundLocations = searchMiniBranchInstructionsInBuffer(buffer, buffer_vaddr, bufferAddrFile, bufferSize, allBranchInstructionsMiniInstructionLL);
-
-    return NULL;
+    return searchMiniBranchInstructionsInBuffer(buffer, buffer_vaddr, bufferAddrFile, bufferSize, allBranchInstructionsMiniInstructionLL);
 }
 
 /**
@@ -98,10 +95,9 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
             MiniInstructionNode *miniInstNode = MiniInstructionNodeCreate(curInstructionMnemonic, curInstructionLength, location, NULL);
             if(miniInstNode == NULL){
                 err("Error inside searchMiniBranchInstructionsInBuffer at MiniInstructionNodeCreate.");
-                //so it will not free the first one.
+                
+                //so it will not free the first one, and same for last if it is still ==start
                 resultGadgetLL->start = resultGadgetLL->start->next;
-
-                //so it will not free the last one if it is from stack.
                 if( resultGadgetLL->end == &fakeNode )
                     resultGadgetLL->end = NULL;
 
@@ -113,18 +109,17 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
             GadgetNode *curGadgetNode = GadgetNodeCreate(miniInstNode, bufferAddrFile+offset, buffer_vaddr+offset);
             if(curGadgetNode == NULL){
                 err("Error inside searchMiniBranchInstructionsInBuffer at GadgetNodeCreate.");
-                //so it will not free the first one.
-                resultGadgetLL->start = resultGadgetLL->start->next;
 
-                //so it will not free the last one if it is from stack.
+                //so it will not free the first one, and same for last if it is still ==start.
+                resultGadgetLL->start = resultGadgetLL->start->next;
                 if(resultGadgetLL->end == &fakeNode)
                     resultGadgetLL->end = NULL;
                 gadgetLLFreeAll(resultGadgetLL);
                 return NULL;
             }
 
-            resultGadgetLL->end->next = curGadgetNode;
-            resultGadgetLL->end = curGadgetNode;
+            GadgetLLAddGadgetNode(resultGadgetLL, curGadgetNode);
+            
 
             buffer_p = location + curInstructionN_p->instructionInfo.mnemonicOpcodeSize;
         }
@@ -150,7 +145,7 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
  * @return GadgetNode*, a linked list of all the location it found.
  *          returning NULL when none found in buffer.
  * 
- * @note This is using malloc, remember to free at the end with gadgetNodeFree
+ * @note This is using malloc, remember to free at the end with gadgetNodeFreeAll...
  */
 GadgetLL *searchJmpInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t bufferAddrFile, size_t bufferSize, ArchInfo *arch_p){
     return searchMiniBranchInstructionsInBuffer(buffer, buffer_vaddr, bufferAddrFile, bufferSize, arch_p->jmpEndings);
