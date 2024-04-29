@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
             
             //now here I will add them to all my gadgets
 
-            GadgetLL *allCurGadgets = expandGadgetsDown(buffer, buf_vaddr, buf_fileOffset, readAmount, currentBranchGadgets, 2);
+            GadgetLL *allCurGadgets = expandGadgetsDown(buffer, buf_vaddr, buf_fileOffset, readAmount, currentBranchGadgets, 3);
 
             GadgetLLCombine(allCurGadgets, currentBranchGadgets);
             gadgetLLFreeOnly(currentBranchGadgets);
