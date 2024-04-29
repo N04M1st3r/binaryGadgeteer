@@ -14,17 +14,84 @@
 static int initRETIntel(ArchInfo *arch_p);
 static int initJMPIntel(ArchInfo *arch_p);
 
+
+
+#define Intel_mnemonicOpcode_RET_Near (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3, 0, 0}
+#define Intel_mnemonicOpcodeSize_RET_Near 1
+#define Intel_additionalSize_RET_Near 0
+
+#define Intel_mnemonicOpcode_RET_FAR (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCB, 0, 0}
+#define Intel_mnemonicOpcodeSize_RET_FAR 1
+#define Intel_additionalSize_RET_FAR 0
+
+#define Intel_mnemonicOpcode_RET_Near_imm16 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC2, 0, 0}
+#define Intel_mnemonicOpcodeSize_RET_Near_imm16 1
+#define Intel_additionalSize_RET_Near_imm16 2
+
+#define Intel_mnemonicOpcode_RET_Far_imm16 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCA, 0, 0}
+#define Intel_mnemonicOpcodeSize_RET_Far_imm16 1
+#define Intel_additionalSize_RET_Far_imm16 2
+/*arch->retEndings = {
+        (MiniBranchInstruction){{0xC3, 0, 0}, 1, 0}, // Near RET
+        (MiniBranchInstruction){{0xCB, 0, 0}, 1, 0}, // Far  RET
+        (MiniBranchInstruction){{0xC2, 0, 0}, 1, 2}, // Near RET {imm16}
+        (MiniBranchInstruction){{0xCA, 0, 0}, 1, 2}  // Far RET {imm16}
+    };*/
+
+
+/**
+ * This is searching for every branch instruction in the buffer, including ret, jmp...
+ * what is a branch instruction? A branch instruction is an instruction which changes or can change the location of the ip/pc. (example: ret, jmp, call)
+ * 
+ * @param buffer The buffer.
+ * @param bufferSize the bufferSize.
+ * @param arch_p The ArchInfo which contains info about this spesific architecture, and how to parse it.
+ * 
+ * @return FoundLocationsBufferNode*, a linked list of all the location it found (which contain branch instruction).
+ *          returning NULL when none found in buffer.
+ * 
+ * @note This is using malloc, remember to free at the end with FoundLocationsBufferNodeFree
+*/
+FoundLocationsBufferNode *searchBranchInstructionsInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p){
+    FoundLocationsBufferNode *result = NULL;
+
+    //can later maybe make this better with ahoCorasick algorithm.
+    
+    FoundLocationsBufferNode *RETs = searchRetInBuffer(buffer, bufferSize, arch_p);
+    if(RETs == NULL){
+        err("Error, inside searchBranchInstructionsInBuffer, while calling searchRetInBuffer.");
+        FoundLocationsBufferNodeFree(result);
+        return NULL;
+    }
+    RETs->next = result;
+    result = RETs;
+
+    FoundLocationsBufferNode *JMPs = searchJmpInBuffer(buffer, bufferSize, arch_p);
+    if(JMPs == NULL){
+        err("Error, inside searchBranchInstructionsInBuffer, while calling searchJmpInBuffer.");
+        FoundLocationsBufferNodeFree(result);
+        return NULL;
+    }
+    JMPs->next = result;
+    result = JMPs;
+
+    return result;
+}
+
 /**
  * This is temporary, create a full search strings so it will also work for others later,
  * and maybe use regex or implement ahoCorasick.
  * 
  * This searches for all ret occurnces in a buffer and returns those indexies.
  * 
- * @param buffer, the buffer.
- * @param bufferSize, the bufferSize
+ * @param buffer the buffer.
+ * @param bufferSize the bufferSize
+ * @param arch_p the ArchInfo which contains info about this spesific architecture, and how to parse it.
  * 
  * @return FoundLocationsBufferNode*, a linked list of all the location it found.
  *          returning NULL when none found in buffer.
+ * 
+ * @note This is using malloc, remember to free at the end with FoundLocationsBufferNodeFree
  */
 FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p){
     /*
@@ -66,8 +133,8 @@ FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, Arc
             }
             bufferLocationNode_p->offset = location - buffer;
             bufferLocationNode_p->miniInstructionInfo = curInstructionN_p->instructionInfo;
+            
             bufferLocationNode_p->next = resultNode;
-
             resultNode = bufferLocationNode_p;
 
             buffer_p = location + curInstructionN_p->instructionInfo.mnemonicOpcodeSize;
@@ -143,11 +210,14 @@ static int initRETIntel(ArchInfo *arch_p){
 
     int error = 0;
     //arrays are of size MAX_MEMONIC_OPCODE_LEN(3) 
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3, 0, 0}, 1, 0);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCB, 0, 0}, 1, 0);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC2, 0, 0}, 1, 2);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCA, 0, 0}, 1, 2);
-
+    //not doing this in a pointer because a mini instruction is 5 bytes where a pointer is 8. (in 64 bit machines)
+    
+    //error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3, 0, 0}, 1, 0);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Near, Intel_mnemonicOpcodeSize_RET_Near, Intel_additionalSize_RET_Near);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_FAR, Intel_mnemonicOpcodeSize_RET_FAR, Intel_additionalSize_RET_FAR);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcodeSize_RET_Near_imm16, Intel_mnemonicOpcodeSize_RET_Near_imm16, Intel_additionalSize_RET_Near_imm16);
+    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcodeSize_RET_Far_imm16, Intel_mnemonicOpcodeSize_RET_Far_imm16, Intel_additionalSize_RET_Far_imm16);
+    
     //LL    mnemonicOpcode[3]   mnemonicOpcodeSize    additionSize
     if (error){
         err("Error adding instruction to arch->retEndings, in initRETIntel at one of the miniInstructionLinkedListAdd.");

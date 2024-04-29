@@ -45,10 +45,6 @@ static uint64_t getSectionsCount(void);
 static uint64_t getProgramHeadersCount(void);
 
 
-//BAD: DEL LATER XD
-#define SUPPRESS_WARNING(a) (void)a
-
-
 /**
  * This will give info and things to do with the elf, 
  * it works on one elf at a time. (because that is what I need)
@@ -244,7 +240,6 @@ static const char *getSectionName(Elf64_Shdr *sectionHdrP){
 static void FIX_UNUSED_DEL(void){
   //DEL LATER!
   getEndiannessEncoding();
-  
 }
 
 /**
@@ -612,6 +607,7 @@ int initElfUtils(char const *filename, unsigned long long entryP){
   //maybe I should do something with the EI_DATA?
 
   if (entryP != ULLONG_MAX){
+      //not sure if this is the way to do this.
       elf_Ehdr.e_entry = entryP;
   }
 
@@ -681,6 +677,7 @@ const char *getArch(void){
  * 
  * 
  * @note: FOR NOW I DON'T SUPPORT OTHER ENDIANESS (ONLY FOR COMPILER COMPUTER ENDIANNESS)
+ * @note after some research it is close to impossible to even run a big endian, if your elf says big the loader just ignores it LOL
 */
 int getEndiannessEncoding(void){
   //can read everything with the endianess thing.
