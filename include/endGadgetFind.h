@@ -26,6 +26,10 @@ typedef struct ArchInfo
 } ArchInfo;
 
 
+FoundLocationsBufferNode *searchBranchInstructionsInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p);
+
+FoundLocationsBufferNode *searchJmpInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p);
+
 FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p);
 
 void FoundLocationsBufferNodeFree(FoundLocationsBufferNode *);
