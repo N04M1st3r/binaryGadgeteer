@@ -198,8 +198,12 @@ int main(int argc, char *argv[])
     // (and take from last one) ZYDIS_MAX_INSTRUCTION_LENGTH
     
     //implement this later!
-    #define searchAheadInstructions 2
+    #define searchAheadInstructions 2 //do that this will be depth maybe
     size_t prefixSize = ZYDIS_MAX_INSTRUCTION_LENGTH*searchAheadInstructions; //before the offset.
+    if(READ_AMOUNT < prefixSize){
+        err("READ_AMOUNT has to be bigger then prefixSize. please change depth or READ_AMOUNT.");
+        return 3;
+    }
 
     //Todo actually use getArch to see the arch
     ArchInfo *arch_p; 
@@ -210,13 +214,13 @@ int main(int argc, char *argv[])
     
     if(arch_p == NULL){
         err("Some error getting the arch info :(");
-        return 3;
+        return 4;
     }
 
     ZydisDecoder decoder; //decoder
     if (!ZYAN_SUCCESS(ZydisDecoderInit(&decoder, arch_p->machine_mode, arch_p->stack_width))){
         err("some error initiating decoder.");
-        return 4;
+        return 5;
     }
     
     //the style of the assembly:
@@ -232,12 +236,8 @@ int main(int argc, char *argv[])
     }
     gadgetGeneralLinkedListEnds allGadgetsGeneralEnds = {.start=allGadgetsGeneralNodeStart, .end=allGadgetsGeneralNodeStart};*/
     //entering a fakeNode 
-    GadgetNode fakeNode = {.next=NULL};
-    GadgetLL *resultGadgetLL = gadgetLLCreate(&fakeNode);
-    if(resultGadgetLL == NULL){
-        err("Error inside searchMiniBranchInstructionsInBuffer while calling gadgetLLCreate.");
-        return NULL;
-    }
+    GadgetLL *allGadgetsLL = NULL; 
+ 
     //TODO: implement so it will go a little back when checking! MUST!
     while(curMiniHdrNode != NULL){
         //zeroing it out so it wouldnt say there is an instruction that there isn't
@@ -245,6 +245,9 @@ int main(int argc, char *argv[])
         uint64_t offset = 0;
         size_t readAmount;
         for (;offset < curMiniHdrNode->cur_mini_phdr.size; offset += readAmount){
+            //doing this to go a bit back for instructions that need to go a bit back. (but I don't want to go back in the first one)
+            offset = 0 > offset-prefixSize ? 0 : offset - prefixSize;
+
             readAmount = curMiniHdrNode->cur_mini_phdr.size - offset;
             readAmount = readAmount > READ_AMOUNT ? READ_AMOUNT : readAmount;
 
@@ -260,9 +263,14 @@ int main(int argc, char *argv[])
             //foundLocations = searchInBuffer()
             //printf("now location: 0x%" PRIx64 " which is offset 0x%" PRIx64 ";\n", buf_vaddr, offset);
 
-            GadgetLL *locations = searchRetInBuffer(buffer, buf_vaddr, buf_fileOffset, readAmount, arch_p);
-            if(locations == NULL)
+            GadgetLL *currentGadgets = searchBranchInstructionsInBuffer(buffer, buf_vaddr, buf_fileOffset, readAmount, arch_p);
+            if(currentGadgets == NULL)
                 continue; //NON found, continue to next one.
+
+            //this is checked everytime but this is more understandable so I like it more like this.
+            
+            
+
             
             //now here I will add them to all my gadgets
 
@@ -289,9 +297,23 @@ int main(int argc, char *argv[])
                 //gadgetGeneralNodeShowAll(curGadgetsGNodeEnds.start);
             }
             FoundLocationsBufferNodeFree(locations);*/
+            expandInstructionsDown(buffer, buf_vaddr, buf_fileOffset, readAmount, currentGadgets);
+
+
+            if(allGadgetsLL == NULL){
+                allGadgetsLL = currentGadgets;
+                continue;
+            }
+
+            GadgetLLCombine(allGadgetsLL, currentGadgets);
         }
         curMiniHdrNode = curMiniHdrNode->next;
     }
+
+
+    //now I will go into more depth in each one.
+
+
     
     /*allGadgetsGeneralEnds.start = allGadgetsGeneralEnds.start->next;
     gadgetGeneralNodeFreeCurrent(allGadgetsGeneralNodeStart);

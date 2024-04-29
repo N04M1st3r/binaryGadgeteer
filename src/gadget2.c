@@ -15,3 +15,10 @@ gadgetList *createGadgetListFromFoundLocationsBufferNode( *locationToSearchFrom)
     
 }
 */
+
+GadgetLL *expandInstructionsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileOffset, size_t readAmount, GadgetLL *currentGadgets){
+    GadgetLL *result;
+
+
+
+}

@@ -130,3 +130,25 @@ void MiniInstructionNodeFree(MiniInstructionNode *cur){
         cur = next;
     }
 }
+
+
+
+/**
+ * Combining src to dest.
+ * 
+ * @param dest the gadgetLL * that will be combined into.
+ * @param src the gadgetLL * that will be "taken" from.
+ * 
+ * @note dest will be changed, but src will not be changed, although the variables inside them are the same.
+ * @note assuming dest!=NULL.
+ * @note asuuming there will not be integer overflow while combining the sizes.
+*/
+void GadgetLLCombine(GadgetLL *dest, GadgetLL *src){
+    if(src == NULL || src->size==0)
+        return;
+    
+    dest->end->next = src->start;
+    dest->end = src->end;
+
+    dest->size += src->size;
+}

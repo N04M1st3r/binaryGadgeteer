@@ -64,7 +64,10 @@ typedef struct GadgetLL{
 GadgetLL *gadgetLLCreate(GadgetNode *first);
 MiniInstructionNode *MiniInstructionNodeCreate(ZydisMnemonic mnemonic, ZyanU8 instructionLength, char *fullOpcode, MiniInstructionNode *next);
 GadgetNode *GadgetNodeCreate(MiniInstructionNode *instNode, uint64_t addr_file, ZyanU64 vaddr);
+
 void gadgetLLFreeAll(GadgetLL *gadgetLL);
 void gadgetNodeFreeCurrent(GadgetNode *gadgetNode);
 void MiniInstructionNodeFree(MiniInstructionNode *cur);
 
+
+void GadgetLLCombine(GadgetLL *dest, GadgetLL *src);
