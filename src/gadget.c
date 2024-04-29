@@ -20,6 +20,7 @@ static bool onlyEndsCondition(GadgetNode *curGadget);
  * @note mallocing onto gadgetsLL, will change it.
 */
 GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileOffset, size_t bufferSize, GadgetLL *gadgetsLL, uint8_t depth){
+    depth--;
     if(depth == 0)
         return NULL;
     
@@ -81,7 +82,7 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
     if(curLevelGadgetLL->end == &fakeNode)
         curLevelGadgetLL->end = NULL;
 
-    GadgetLL *nextLevelGadgetLL = expandGadgetsDown(buffer, buf_vaddr, buf_fileOffset, bufferSize, curLevelGadgetLL, depth-1);
+    GadgetLL *nextLevelGadgetLL = expandGadgetsDown(buffer, buf_vaddr, buf_fileOffset, bufferSize, curLevelGadgetLL, depth);
 
     GadgetLLCombine(curLevelGadgetLL, nextLevelGadgetLL);
     gadgetLLFreeOnly(nextLevelGadgetLL);
@@ -202,7 +203,7 @@ void GadgetLLShowBasedCondition(GadgetLL *gadgetsLL, bool (*checkCondition)(Gadg
                 decodedInstruction.operand_count_visible, decodedBuffer, sizeof(decodedBuffer), runtime_address, ZYAN_NULL);
             //(passing ZYAN_NULL in user_data)
 
-            printf("%s{%d,%d}", decodedBuffer, decodedInstruction.mnemonic, ZYDIS_MNEMONIC_RET);
+            printf("%s", decodedBuffer);
             if(curInstNode->next != NULL)
                 printf(" -> ");
 

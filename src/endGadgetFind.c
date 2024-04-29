@@ -261,6 +261,7 @@ static int initRETIntel(ArchInfo *arch_p){
     //arrays are of size MAX_MEMONIC_OPCODE_LEN(3) 
     //not doing this in a pointer because a mini instruction is 5 bytes where a pointer is 8. (in 64 bit machines)
     
+    //https://github.com/HJLebbink/asm-dude/wiki/RET
     //error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3, 0, 0}, 1, 0);
     error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Near, Intel_mnemonicOpcodeSize_RET_Near, Intel_additionalSize_RET_Near, ZYDIS_MNEMONIC_RET);
     error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_FAR, Intel_mnemonicOpcodeSize_RET_FAR, Intel_additionalSize_RET_FAR, ZYDIS_MNEMONIC_RET);

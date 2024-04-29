@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
             uint64_t buf_vaddr = curMiniHdrNode->cur_mini_phdr.vaddr + offset;
             uint64_t buf_fileOffset = curMiniHdrNode->cur_mini_phdr.file_offset + offset;
             if (readFileData( buf_fileOffset , readAmount, buffer)){
-                err("error in readFileData at main.");
+                err("Error in readFileData at main.");
                 return 6;
             }
 
