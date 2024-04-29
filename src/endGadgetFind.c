@@ -13,7 +13,7 @@
 
 static int initRETIntel(ArchInfo *arch_p);
 static int initJMPIntel(ArchInfo *arch_p);
-static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buffer, size_t bufferSize, MiniBranchInstructionLinkedList *curInstructionN_p);
+static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t addr_file, size_t bufferSize, MiniBranchInstructionLinkedList *curInstructionN_p);
 
 #define Intel_mnemonicOpcode_RET_Near (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3}
 #define Intel_mnemonicOpcodeSize_RET_Near 1
@@ -40,18 +40,20 @@ static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buff
  * @param bufferSize the bufferSize.
  * @param arch_p The ArchInfo which contains info about this spesific architecture, and how to parse it.
  * 
- * @return FoundLocationsBufferNode*, a linked list of all the location it found (which contain branch instruction).
+ * @return GadgetLL*, a linked list of all the location it found (which contain branch instruction).
  *          returning NULL when none found in buffer.
  * 
- * @note This is using malloc, remember to free at the end with FoundLocationsBufferNodeFree
+ * @note This is using malloc, remember to free at the end with gadgetLLFree
 */
-FoundLocationsBufferNode *searchBranchInstructionsInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p){
+GadgetLL *searchBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t bufferAddrFile, size_t bufferSize, ArchInfo *arch_p){
     
     
     MiniBranchInstructionLinkedList *allBranchInstructionsMiniInstructionLL = arch_p->retEndings;
     miniInstructionLinkedListCombine(allBranchInstructionsMiniInstructionLL, arch_p->jmpEndings);
 
-    return searchMiniBranchInstructionsInBuffer(buffer, bufferSize, allBranchInstructionsMiniInstructionLL);
+    GadgetLL *foundLocations = searchMiniBranchInstructionsInBuffer(buffer, buffer_vaddr, bufferAddrFile, bufferSize, allBranchInstructionsMiniInstructionLL);
+
+    return NULL;
 }
 
 /**
@@ -61,45 +63,80 @@ FoundLocationsBufferNode *searchBranchInstructionsInBuffer(char *buffer, size_t 
  * @param bufferSize the bufferSize
  * @param MiniBranchInstructionLinkedList* A linked list of branch instructions to search in the buffer.
  * 
- * @return FoundLocationsBufferNode*, a linked list of all the location it found.
- *          returning NULL when none found in buffer.
+ * @return GadgetLL*, a linked list of all the location it found.
+ *          returning NULL in error, when none are found just resultNode->size=0.
  * 
- * @note This is using malloc, remember to free at the end with FoundLocationsBufferNodeFree
+ * @note This is using malloc, remember to free at the end with gadgetLLFree
  */
-static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buffer, size_t bufferSize, MiniBranchInstructionLinkedList *miniBarnchInstructionLL){
+static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t bufferAddrFile, size_t bufferSize, MiniBranchInstructionLinkedList *miniBarnchInstructionLL){
     //can later maybe make this better with ahoCorasick algorithm. (or just regular regex)
 
-    FoundLocationsBufferNode *resultNode = NULL;
+
+    //making the start node a fake one, I will delete it later, just for easier.
+    GadgetNode fakeNode = {.next=NULL};
+    GadgetLL *resultGadgetLL = gadgetLLCreate(&fakeNode);
+    if(resultGadgetLL == NULL){
+        err("Error inside searchMiniBranchInstructionsInBuffer while calling gadgetLLCreate.");
+        return NULL;
+    }
+
     MiniBranchInstructionNode *curInstructionN_p = miniBarnchInstructionLL->start;
 
     for(;curInstructionN_p != NULL; curInstructionN_p = curInstructionN_p->next){
         char *buffer_p = buffer;
         char *location;
 
+        uint8_t curInstructionLength = curInstructionN_p->instructionInfo.additionSize + curInstructionN_p->instructionInfo.mnemonicOpcodeSize;
+        uint8_t curInstructionMnemonic = curInstructionN_p->instructionInfo.mnemonicOpcode;
+
         while ( (location = memmem(buffer_p, bufferSize - (buffer_p-buffer), curInstructionN_p->instructionInfo.mnemonicOpcode, curInstructionN_p->instructionInfo.mnemonicOpcodeSize)) ){
             //Found :)
 
             //printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld FINAL: 0x%" PRIx64 "\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer, buf_vaddr+location - buffer);
             //each one I find I will write its address
+            
+            MiniInstructionNode *miniInstNode = MiniInstructionNodeCreate(curInstructionMnemonic, curInstructionLength, location, NULL);
+            if(miniInstNode == NULL){
+                err("Error inside searchMiniBranchInstructionsInBuffer at MiniInstructionNodeCreate.");
+                //so it will not free the first one.
+                resultGadgetLL->start = resultGadgetLL->start->next;
 
-            FoundLocationsBufferNode *bufferLocationNode_p = (FoundLocationsBufferNode *) malloc(sizeof(FoundLocationsBufferNode));
-            if ( bufferLocationNode_p == NULL ){
-                err("Error in malloc, inside searchRetInBuffer, while allocating for bufferLocationNode_p, size %ld.", sizeof(FoundLocationsBufferNode));
-                FoundLocationsBufferNodeFree(resultNode);
+                //so it will not free the last one if it is from stack.
+                if( resultGadgetLL->end == &fakeNode )
+                    resultGadgetLL->end = NULL;
+
+                gadgetLLFreeAll(resultGadgetLL);
                 return NULL;
             }
-            bufferLocationNode_p->offset = location - buffer;
-            bufferLocationNode_p->miniInstructionInfo = curInstructionN_p->instructionInfo;
-            
-            bufferLocationNode_p->next = resultNode;
-            resultNode = bufferLocationNode_p;
+
+            uint64_t offset = location - buffer;
+            GadgetNode *curGadgetNode = GadgetNodeCreate(miniInstNode, bufferAddrFile+offset, buffer_vaddr+offset);
+            if(curGadgetNode == NULL){
+                err("Error inside searchMiniBranchInstructionsInBuffer at GadgetNodeCreate.");
+                //so it will not free the first one.
+                resultGadgetLL->start = resultGadgetLL->start->next;
+
+                //so it will not free the last one if it is from stack.
+                if(resultGadgetLL->end == &fakeNode)
+                    resultGadgetLL->end = NULL;
+                gadgetLLFreeAll(resultGadgetLL);
+                return NULL;
+            }
+
+            resultGadgetLL->end->next = curGadgetNode;
+            resultGadgetLL->end = curGadgetNode;
 
             buffer_p = location + curInstructionN_p->instructionInfo.mnemonicOpcodeSize;
         }
     }
 
+    resultGadgetLL->start = resultGadgetLL->start->next;
+    (resultGadgetLL->size)--;
+    if(resultGadgetLL->end == &fakeNode)
+        resultGadgetLL->end = NULL;
+    
 
-    return resultNode;
+    return resultGadgetLL;
 }
 
 
@@ -110,13 +147,13 @@ static FoundLocationsBufferNode *searchMiniBranchInstructionsInBuffer(char *buff
  * @param bufferSize the bufferSize
  * @param arch_p the ArchInfo which contains info about this spesific architecture, and how to parse it.
  * 
- * @return FoundLocationsBufferNode*, a linked list of all the location it found.
+ * @return GadgetNode*, a linked list of all the location it found.
  *          returning NULL when none found in buffer.
  * 
- * @note This is using malloc, remember to free at the end with FoundLocationsBufferNodeFree
+ * @note This is using malloc, remember to free at the end with gadgetNodeFree
  */
-FoundLocationsBufferNode *searchJmpInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p){
-    return searchMiniBranchInstructionsInBuffer(buffer, bufferSize, arch_p->jmpEndings);
+GadgetLL *searchJmpInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t bufferAddrFile, size_t bufferSize, ArchInfo *arch_p){
+    return searchMiniBranchInstructionsInBuffer(buffer, buffer_vaddr, bufferAddrFile, bufferSize, arch_p->jmpEndings);
 }
 
 
@@ -127,12 +164,12 @@ FoundLocationsBufferNode *searchJmpInBuffer(char *buffer, size_t bufferSize, Arc
  * @param bufferSize the bufferSize
  * @param arch_p the ArchInfo which contains info about this spesific architecture, and how to parse it.
  * 
- * @return FoundLocationsBufferNode*, a linked list of all the location it found.
+ * @return GadgetLL*, a linked list of all the location it found.
  *          returning NULL when none found in buffer.
  * 
- * @note This is using malloc, remember to free at the end with FoundLocationsBufferNodeFree
+ * @note This is using malloc, remember to free at the end with gadgetLLFree
  */
-FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p){
+GadgetLL *searchRetInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t bufferAddrFile, size_t bufferSize, ArchInfo *arch_p){
     /*
     An instruction is built from an opcode and operands.
     
@@ -151,7 +188,7 @@ FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, Arc
 
     //For now I will do a bad search, I will make it better in the future!    
 
-    return searchMiniBranchInstructionsInBuffer(buffer, bufferSize, arch_p->retEndings);
+    return searchMiniBranchInstructionsInBuffer(buffer, buffer_vaddr, bufferAddrFile, bufferSize, arch_p->retEndings);
 }
 
 
@@ -162,14 +199,16 @@ FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, Arc
  * 
  * @note it frees a malloced node and his other ones, make sure not to touch them again.
 */
-void FoundLocationsBufferNodeFree(FoundLocationsBufferNode *locationsBufferNode){
+/*
+//TODO: del this
+void FoundLocationsBufferNodeFree(gadgetLL *locationsBufferNode){
     FoundLocationsBufferNode *tmp;
     while(locationsBufferNode != NULL){
         tmp = locationsBufferNode->next;
         free(locationsBufferNode);
         locationsBufferNode = tmp;
     }
-}
+}*/
 
 
 /**

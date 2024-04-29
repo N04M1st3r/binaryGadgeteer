@@ -9,7 +9,9 @@
 
 #include "endGadgetFind.h"
 
-#include "gadget.h"
+//#include "gadget.h" //it is contaminated
+
+#include "gadgetLinkedList.h"
 
 //to print
 #include <stdio.h>
@@ -221,15 +223,21 @@ int main(int argc, char *argv[])
     ZydisFormatter formatter;
     ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL);
 
-    initDecoderAndFormatter(&decoder, &formatter);
+    //initDecoderAndFormatter(&decoder, &formatter);
     
-    gadgetGeneralNode *allGadgetsGeneralNodeStart = gadgetGeneralNodeCreate((gadgetGeneral) {.addr_file=0, .checked=true, .length=0, .vaddr=0, .first=NULL});
+    /*gadgetGeneralNode *allGadgetsGeneralNodeStart = gadgetGeneralNodeCreate((gadgetGeneral) {.addr_file=0, .checked=true, .length=0, .vaddr=0, .first=NULL});
     if (allGadgetsGeneralNodeStart == NULL){
         err("Error while getting allGadgetsGeneralNodeStart at gadgetGeneralNodeCreate in main.");
         return 5;
     }
-    gadgetGeneralLinkedListEnds allGadgetsGeneralEnds = {.start=allGadgetsGeneralNodeStart, .end=allGadgetsGeneralNodeStart};
-
+    gadgetGeneralLinkedListEnds allGadgetsGeneralEnds = {.start=allGadgetsGeneralNodeStart, .end=allGadgetsGeneralNodeStart};*/
+    //entering a fakeNode 
+    GadgetNode fakeNode = {.next=NULL};
+    GadgetLL *resultGadgetLL = gadgetLLCreate(&fakeNode);
+    if(resultGadgetLL == NULL){
+        err("Error inside searchMiniBranchInstructionsInBuffer while calling gadgetLLCreate.");
+        return NULL;
+    }
     //TODO: implement so it will go a little back when checking! MUST!
     while(curMiniHdrNode != NULL){
         //zeroing it out so it wouldnt say there is an instruction that there isn't
@@ -251,7 +259,8 @@ int main(int argc, char *argv[])
             
             //foundLocations = searchInBuffer()
             //printf("now location: 0x%" PRIx64 " which is offset 0x%" PRIx64 ";\n", buf_vaddr, offset);
-            FoundLocationsBufferNode *locations = searchRetInBuffer(buffer, readAmount, arch_p);
+
+            GadgetLL *locations = searchRetInBuffer(buffer, buf_vaddr, buf_fileOffset, readAmount, arch_p);
             if(locations == NULL)
                 continue; //NON found, continue to next one.
             
@@ -259,7 +268,7 @@ int main(int argc, char *argv[])
 
             //printf("woho found :)");
             //printf("cur: 0x%" PRIx64 "\n", buf_vaddr);
-            FoundLocationsBufferNode *curBranchInstructionLocation = locations;
+            /*FoundLocationsBufferNode *curBranchInstructionLocation = locations;
 
             //int debugDELLATER = 0;
             for(; curBranchInstructionLocation != NULL; curBranchInstructionLocation = curBranchInstructionLocation->next){
@@ -279,12 +288,12 @@ int main(int argc, char *argv[])
                 //printf("showing:\n");
                 //gadgetGeneralNodeShowAll(curGadgetsGNodeEnds.start);
             }
-            FoundLocationsBufferNodeFree(locations);
+            FoundLocationsBufferNodeFree(locations);*/
         }
         curMiniHdrNode = curMiniHdrNode->next;
     }
     
-    allGadgetsGeneralEnds.start = allGadgetsGeneralEnds.start->next;
+    /*allGadgetsGeneralEnds.start = allGadgetsGeneralEnds.start->next;
     gadgetGeneralNodeFreeCurrent(allGadgetsGeneralNodeStart);
     if(allGadgetsGeneralEnds.end == allGadgetsGeneralNodeStart){
         //if it is equal it means no gadgets are found (WTF) but checking just in case.
@@ -297,7 +306,7 @@ int main(int argc, char *argv[])
     //can also maybe sort by whatever with merge sort, https://www.geeksforgeeks.org/sorting-a-singly-linked-list/
 
 
-    gadgetGeneralNodeFreeAll(allGadgetsGeneralEnds.start);
+    gadgetGeneralNodeFreeAll(allGadgetsGeneralEnds.start);*/
     free(buffer);
 
     freeArchInfo(arch_p);

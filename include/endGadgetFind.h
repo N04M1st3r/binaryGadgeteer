@@ -1,18 +1,20 @@
 #pragma once
 
 #include "miniInstructionLinkedList.h"
+#include "gadgetLinkedList.h"
 
 #include <inttypes.h>
 #include <Zydis/Zydis.h>
 #include <stdbool.h>
 
+/*
 //maybe create a file just for this:
 typedef struct FoundLocationsBufferNode{
     size_t offset; //offset inside buffer.
     MiniBranchInstruction miniInstructionInfo;
     struct FoundLocationsBufferNode *next;
 } FoundLocationsBufferNode;
-
+*/
 
 
 typedef struct ArchInfo
@@ -26,13 +28,13 @@ typedef struct ArchInfo
 } ArchInfo;
 
 
-FoundLocationsBufferNode *searchBranchInstructionsInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p);
+GadgetLL *searchBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t addr_file, size_t bufferSize, ArchInfo *arch_p);
 
-FoundLocationsBufferNode *searchJmpInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p);
+GadgetLL *searchJmpInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t addr_file, size_t bufferSize, ArchInfo *arch_p);
 
-FoundLocationsBufferNode *searchRetInBuffer(char *buffer, size_t bufferSize, ArchInfo *arch_p);
+GadgetLL *searchRetInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t addr_file, size_t bufferSize, ArchInfo *arch_p);
 
-void FoundLocationsBufferNodeFree(FoundLocationsBufferNode *);
+//void FoundLocationsBufferNodeFree(gadgetLL *);
 
 //will maybe expand this function in the future
 ArchInfo *initArchInfo(const char *archName);
