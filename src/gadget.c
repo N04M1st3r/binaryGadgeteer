@@ -18,9 +18,9 @@ static bool onlyEndsCondition(GadgetNode *curGadget);
  * @return  GadgetLL * the gadget linked list, allocated so free! with gadgetLLFreeAll or...
  * 
  * @note mallocing onto gadgetsLL, will change it.
+ * @note this is a recursive fuction, the depth is depnding on `depth`
 */
 GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileOffset, size_t bufferSize, GadgetLL *gadgetsLL, uint8_t depth){
-    depth--;
     if(depth == 0)
         return NULL;
     
@@ -82,7 +82,7 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
     if(curLevelGadgetLL->end == &fakeNode)
         curLevelGadgetLL->end = NULL;
 
-    GadgetLL *nextLevelGadgetLL = expandGadgetsDown(buffer, buf_vaddr, buf_fileOffset, bufferSize, curLevelGadgetLL, depth);
+    GadgetLL *nextLevelGadgetLL = expandGadgetsDown(buffer, buf_vaddr, buf_fileOffset, bufferSize, curLevelGadgetLL, depth-1);
 
     GadgetLLCombine(curLevelGadgetLL, nextLevelGadgetLL);
     gadgetLLFreeOnly(nextLevelGadgetLL);

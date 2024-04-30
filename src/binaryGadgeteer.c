@@ -40,14 +40,18 @@
 //for tolower() in the parsing of the input
 #include <ctype.h>
 
+//for UCHAR_MAX and such.
+#include <limits.h>
+
 
 
 #define READ_AMOUNT 10000
+#define DEFAULT_DEPTH 3
 
 
-
-static unsigned long long base_address_number = 0;
+static uint64_t base_address_number = 0;
 static char* filename = NULL;
+static uint8_t depth = DEFAULT_DEPTH; 
 
 static char const *HELP_TEXT =
     "Usage: %s [OPTIONS] BINARY_FILE ....\n"
@@ -55,39 +59,95 @@ static char const *HELP_TEXT =
     " -a, --address 0XADDRESS           Give the start address in hex.\n"
     " -v, --version                     Display version and information and exit.\n"
     " -h, --help                        Display this help and exit.\n"
-    " -o, --output outputfile.txt       Give output file.\n";
+    " -o, --output outputfile.txt       Give output file.\n"
+    " -d, --depth NUM                   Set depth to NUM.\n";
 
 static char const *VERSION_TEXT = 
     "binaryGadgeteer: Version 1.0\n";
 
 
-static void parseOptionAddress(char const *address_s);
+static int parseNumber(char const *number_s, uint64_t *result);
+
+static int parseOptionAddress(char const *address_s);
+static int parseOptionDepth(char const *depth_s);
+
 static void readOptions(int argc, char **argv);
 
-static void parseOptionAddress(char const *address_s){
+/**
+ * Parses the number from string to a number.
+ * can be hex(base 16), binary(base2) or decimal(base10)
+ * I DO NOT SUPPORT OCTAL THIS IS THE BASE OF THE DEMONS!
+ * 
+ * @param number_s number in a string format.
+ * @param result where the result will be saved.
+ * 
+ * @return 0 is success, anything else in error.
+*/
+static int parseNumber(char const *number_s, uint64_t *result){
     char *endptr = NULL;
 
     //long long Address
-    if(!strncmp(address_s, "0x", 2))      //hex, base 16
-        base_address_number = strtoull(address_s+2, &endptr, 16);
-    else if(!strncmp(address_s, "0b", 2)) //binary, base 2
-        base_address_number = strtoull(address_s+2, &endptr, 2);
+    if(!strncmp(number_s, "0x", 2))      //hex, base 16
+        *result = strtoull(number_s+2, &endptr, 16);
+    else if(!strncmp(number_s, "0b", 2)) //binary, base 2
+        *result = strtoull(number_s+2, &endptr, 2);
     else                                  //decimal, base 10 (default).
-        base_address_number = strtoull(address_s, &endptr, 10);
+        *result = strtoull(number_s, &endptr, 10);
 
-    if(errno != 0){
-        err("strtoull error inside parseOptionAddress");
-        exit(EXIT_FAILURE);
+    if(errno != 0){ //TODO: add --depth
+        err("strtoull error inside parseNumber");
+        return 1;
     }
     
-    if (endptr == address_s){
-        err("No digits were found! strtoull\n");
-        exit(EXIT_FAILURE);
+    if (endptr == number_s){
+        err("No digits were found! strtoull inside parseNumber\n");
+        return 2;
     }
 
     if (*endptr != '\0'){
-        err("unknown characters in number, ignoring. strtoull. continuing with base %llX.", base_address_number);
+        err("unknown characters in number, ignoring. strtoull. continuing with base %llX.", *result);
     }
+    return 0;
+}
+
+/**
+ * Parsing base address option.
+ * 
+ * @param address_s the address in a string format from the user.
+ * 
+ * @return 0 is success, anything else in error.
+ * 
+ * @note touching base_address_number
+*/
+static int parseOptionAddress(char const *address_s){
+    if (parseNumber(address_s, &base_address_number)){
+        err("Error inside parseOptionAddress, at parseNumber\n");
+        return 1;
+    }
+    return 0;
+}
+
+/**
+ * Parsing depth option.
+ * 
+ * @param depth_s the depth in a string format from the user.
+ * 
+ * @return 0 is success, anything else in error.
+*/
+static int parseOptionDepth(char const *depth_s){
+    uint64_t depthL;
+    if(parseNumber(depth_s, &depthL)){
+        err("Error inside parseOptionDepth, at parseNumber\n");
+        return 1;
+    }
+
+    if(depthL > UCHAR_MAX){
+        err("depth is too much, lowering it to 255");
+        depth = 255;
+    }else{
+        depth = (uint8_t)depthL;
+    }
+    return 0;
 }
 
 static void readOptions(int argc, char **argv){
@@ -96,6 +156,7 @@ static void readOptions(int argc, char **argv){
         { "help", no_argument, NULL, 'h'},
         { "version", no_argument, NULL, 'v'},
         { "output", required_argument, NULL, 'o'},
+        { "depth", required_argument, NULL, 'd'},
         {0, 0, 0, 0}
     };
 
@@ -106,12 +167,16 @@ static void readOptions(int argc, char **argv){
 
     int n;
 
-    while ((n = getopt_long(argc, argv, "a:hvo:", options, NULL)) != EOF){
+    while ((n = getopt_long(argc, argv, "a:hvod:", options, NULL)) != EOF){
         switch(n){
             case 'a': ;
                 err("not implemented");
                 exit(1);
-                parseOptionAddress(optarg);
+                if (parseOptionAddress(optarg)){
+                    err("Please address use as in help.");
+                    fprintf(stdout, HELP_TEXT, argv[0]);
+                    exit(1);
+                }
                 //printf("chosen base: %llX\n", base_address_number);
                 break;
             case 'h':
@@ -127,6 +192,13 @@ static void readOptions(int argc, char **argv){
                 //can get it with outarg
                 err("not implemented");
                 break;
+            case 'd':
+                if (parseOptionDepth(optarg)){
+                    err("Please depth use as in help.");
+                    fprintf(stdout, HELP_TEXT, argv[0]);
+                    exit(1);
+                }
+                break;
             default:
                 fprintf(stderr, "Try --help for more information.\n");
                 exit(EXIT_FAILURE);
@@ -135,27 +207,6 @@ static void readOptions(int argc, char **argv){
 
     filename = argv[optind];
 }
-
-
-/**
- * Searching for all occurnces of searchBytes in buffer.
- * 
- * @param buffer, the buffer that is searched in.
- * @param bufferSize, the size of the buffer that is searched.
- * @param searchBytes, the bytes to search for in the buffer.
- * @param amountOfBytes, the amount of bytes to search.
- * 
- * @note not the most efficent way
-*/
-/*
-I need to implement an algorithm that will do the following:
-Search for m1, m2, m3,..., mk (bytes/string) in S(bytes/string).
-in an effective way.
-*/
-/*
-foundLocationsNode* searchInBuffer(char *buffer, uint64_t bufferSize, char *searchBytes, uint64_t amountOfBytes){
-
-}*/
 
 
 
@@ -194,8 +245,9 @@ int main(int argc, char *argv[])
 
     Mini_ELF_Phdr_node *curMiniHdrNode = head;
     
-    #define searchAheadInstructions 2 //do that this will be depth maybe
-    size_t prefixSize = ZYDIS_MAX_INSTRUCTION_LENGTH*searchAheadInstructions; //before the offset.
+
+    //the prefix size is ZYDIS_MAX_INSTRUCTION_LENGTH * searchAheadInstructions
+    size_t prefixSize = ZYDIS_MAX_INSTRUCTION_LENGTH*(depth-1); //before the offset.
     if(READ_AMOUNT < prefixSize){
         err("READ_AMOUNT has to be bigger then prefixSize. please change depth or READ_AMOUNT.");
         return 3;
@@ -247,7 +299,18 @@ int main(int argc, char *argv[])
             
             //now here I will add them to all my gadgets
 
-            GadgetLL *allCurGadgets = expandGadgetsDown(buffer, buf_vaddr, buf_fileOffset, readAmount, currentBranchGadgets, 3);
+            GadgetLL *allCurGadgets = expandGadgetsDown(buffer, buf_vaddr, buf_fileOffset, readAmount, currentBranchGadgets, depth-1);
+            
+            //for the edge (very very edge or error) case where allCurGadgets is NULL (or none found or depth=1).
+            if(allCurGadgets == NULL){
+                if(allGadgetsLL == NULL){
+                    allGadgetsLL = currentBranchGadgets;
+                    continue;
+                }
+                GadgetLLCombine(allGadgetsLL, currentBranchGadgets);
+                gadgetLLFreeOnly(currentBranchGadgets);
+                continue;
+            }
 
             GadgetLLCombine(allCurGadgets, currentBranchGadgets);
             gadgetLLFreeOnly(currentBranchGadgets);
