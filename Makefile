@@ -2,7 +2,7 @@ CC := gcc
 OPT := -O0
 DEBUG := -g
 
-BINARY := bin
+BINARY := bingaj
 CDIR = src
 ODIR = obj
 
