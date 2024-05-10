@@ -16,6 +16,8 @@ static int initJMPIntel(ArchInfo *arch_p);
 static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t addr_file, size_t bufferSize, MiniBranchInstructionLinkedList *curInstructionN_p);
 
 
+//RET:
+//https://www.felixcloutier.com/x86/ret
 
 //my theory: first ?(4) bits, the instruction, then bit[4](5th) tells if FAR, then bit[7](8th) tells imm16 or not.
 #define Intel_mnemonicOpcode_RET_Near (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3} //0b11000011
@@ -30,10 +32,21 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
 #define Intel_mnemonicOpcodeSize_RET_Near_imm16 1
 #define Intel_additionalSize_RET_Near_imm16 2
 
-
 #define Intel_mnemonicOpcode_RET_Far_imm16 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xCA} //0b11001010
 #define Intel_mnemonicOpcodeSize_RET_Far_imm16 1
 #define Intel_additionalSize_RET_Far_imm16 2
+
+//@TODO do jumps!
+//JMP:
+//https://www.felixcloutier.com/x86/jmp
+
+//relative JMPs:
+//  JMP rel8 / Jump short	                                not sure about the 0xcb?
+
+//  
+
+//absolute  
+
 
 
 /**
@@ -292,6 +305,9 @@ static int initRETIntel(ArchInfo *arch_p){
 */
 static int initJMPIntel(ArchInfo *arch_p){
     //todo write later.
+
+    //note that some of the jmps are not supported in 64bit but are supported in 32bit.
+
     return 0;
 }
 

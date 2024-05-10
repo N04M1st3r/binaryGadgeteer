@@ -237,10 +237,6 @@ static const char *getSectionName(Elf64_Shdr *sectionHdrP){
   return stringTable.data + sectionHdrP->sh_name;
 }
 
-static void FIX_UNUSED_DEL(void){
-  //DEL LATER!
-  getEndiannessEncoding();
-}
 
 /**
  * Initilizes the stringTable struct with the values from the file as needed.

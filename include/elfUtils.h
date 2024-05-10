@@ -17,7 +17,7 @@ typedef struct Mini_ELF_Phdr_node{
 } Mini_ELF_Phdr_node;
 
 //call this before you do anything and you have to get 0.
-int initElfUtils(char const *filename, unsigned long long entryP);
+int initElfUtils(char const *filename, uint64_t entryP);
 
 //call this when you finish using this class.
 int cleanElfUtils(void);

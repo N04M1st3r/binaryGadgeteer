@@ -124,7 +124,8 @@ int initDecoderAndFormatter(ArchInfo *arch_p){
  * 
  * @return true
 */
-static bool alwaysTrueCondition(GadgetNode *curGadget){
+static bool alwaysTrueCondition(GadgetNode *__curGadget){
+    (void)__curGadget;
     return true;
 }
 
