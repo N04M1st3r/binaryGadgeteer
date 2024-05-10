@@ -2,6 +2,9 @@
 #include "costumErrors.h"
 
 
+static ZydisFormatter formatter;
+static ZydisDecoder decoder;
+
 static bool alwaysTrueCondition(GadgetNode *curGadget);
 static bool onlyEndsCondition(GadgetNode *curGadget);
 
@@ -125,6 +128,7 @@ int initDecoderAndFormatter(ArchInfo *arch_p){
  * @return true
 */
 static bool alwaysTrueCondition(GadgetNode *__curGadget){
+    //so it won't be unused:
     (void)__curGadget;
     return true;
 }

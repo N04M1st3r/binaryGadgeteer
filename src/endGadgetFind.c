@@ -16,6 +16,15 @@ static int initJMPIntel(ArchInfo *arch_p);
 static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t addr_file, size_t bufferSize, MiniBranchInstructionLinkedList *curInstructionN_p);
 
 
+/*
+
+
+When the F2 prefix precedes a near CALL, a near RET, a near JMP, a short Jcc, or a near Jcc instruction
+(see Appendix E, “Intel® Memory Protection Extensions,” of the Intel® 64 and IA-32 Architectures
+Software Developer’s Manual, Volume 1)
+
+*/
+
 //RET:
 //https://www.felixcloutier.com/x86/ret
 
