@@ -47,7 +47,7 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
             if(bufferDecode < buffer){
                 err("Cant Go that down! in expandGadgetsDown. tried: %p   where buffer: %p   at vaddr: 0x%" PRIx64 "\n", bufferDecode ,buffer ,runtime_address);
                 break;
-            }                                                               //can maybe pass here just i? (branchMiniInstruction.instructionLength + i) instead of i
+            }                                                               
             if(!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, bufferDecode, i, &decodedInstruction, operands))){
                             //Cant decode this, no such instruction.
                             continue;

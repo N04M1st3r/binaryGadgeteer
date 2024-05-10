@@ -145,6 +145,7 @@ void gadgetLLFreeOnly(GadgetLL *gadgetLL){
  * Frees gadgetNode in a safe way.
  * 
  * @note assuming gadgetNode != NULL.
+ * @note not sure there is a use for this but why not.
 */
 void gadgetNodeFreeCurrentOnly(GadgetNode *gadgetNode){
     free(gadgetNode);
@@ -184,7 +185,7 @@ void MiniInstructionNodeFree(MiniInstructionNode *cur){
 
 
 /**
- * Combining src to dest.
+ * Combining src to dest, like merge.
  * 
  * @param dest the gadgetLL * that will be combined into.
  * @param src the gadgetLL * that will be "taken" from.

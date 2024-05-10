@@ -41,6 +41,8 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
  * what is a branch instruction? A branch instruction is an instruction which changes or can change the location of the ip/pc. (example: ret, jmp, call)
  * 
  * @param buffer The buffer.
+ * @param buffer_vaddr The buffer virtual address of the first byte in the buffer.
+ * @param bufferAddrFile The buffer address in the file of the first byte.
  * @param bufferSize the bufferSize.
  * @param arch_p The ArchInfo which contains info about this spesific architecture, and how to parse it.
  * 

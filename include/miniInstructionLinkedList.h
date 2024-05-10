@@ -48,6 +48,7 @@ typedef struct MiniBranchInstructionNode{
 
 typedef struct MiniBranchInstructionLinkedList{
     MiniBranchInstructionNode *start;
+    //maybe add end for faster miniInstructionLinkedListCombine.
     size_t size;
 } MiniBranchInstructionLinkedList;
 

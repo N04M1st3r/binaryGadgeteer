@@ -579,7 +579,7 @@ static void showSectionHdrFlags(Elf64_Shdr *sectionP){
  * 
  * @return sucess, 0 if no errors, another if there were errors.
 */
-int initElfUtils(char const *filename, unsigned long long entryP){
+int initElfUtils(char const *filename, uint64_t entryP){
   if ((file = fopen(filename, "rb")) == NULL){ //TODO CHANGE TO rb FROM rb+!!!!!
     err("Error opening the file in initElfUtils");
     return 1;
@@ -601,7 +601,6 @@ int initElfUtils(char const *filename, unsigned long long entryP){
     err("Error in initElfUtils at initStringTable");
     return 4;
   }
-
   //can add a check to see if elf header size is e_ehsize.
 
   //maybe I should do something with the EI_DATA?
@@ -610,9 +609,8 @@ int initElfUtils(char const *filename, unsigned long long entryP){
       //not sure if this is the way to do this.
       elf_Ehdr.e_entry = entryP;
   }
-
+  
   return 0;
-  FIX_UNUSED_DEL(); //DEL LATER!
 }
 
 /**
