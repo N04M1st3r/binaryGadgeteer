@@ -34,11 +34,12 @@ Example 2:
 
 
 */
-typedef struct MiniBranchInstruction{ //saving the minimum info needed on the instruction
+typedef struct MiniBranchInstruction{ //saving the minimum info needed on the instruction (and diffrerent from regular instruciton because I need to search with that)
     uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN];       /*Max mnemonicOpcode/startOpcode length is 3 (according to intel manual), start opcode*/
     uint8_t mnemonicOpcodeSize;
     uint8_t additionSize;
     ZydisMnemonic mnemonic;
+
 } MiniBranchInstruction; //YOU ARE NOT SUPPOUS TO CREATE OBJECT OF THIS, just use miniInstructionLinkedListFreeNoInstructionInfo
 
 typedef struct MiniBranchInstructionNode{

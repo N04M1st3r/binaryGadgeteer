@@ -17,11 +17,19 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
 
 
 /*
+(note, jcc is every condition jmp(not including jmp))
 
 
-When the F2 prefix precedes a near CALL, a near RET, a near JMP, a short Jcc, or a near Jcc instruction
-(see Appendix E, “Intel® Memory Protection Extensions,” of the Intel® 64 and IA-32 Architectures
-Software Developer’s Manual, Volume 1)
+— BND prefix is encoded using F2H if the following conditions are true:
+    (when weird things)
+    When the F2 prefix precedes a near CALL, a near RET, a near JMP, a short Jcc, or a near Jcc instruction
+    (see Appendix E, “Intel® Memory Protection Extensions,” of the Intel® 64 and IA-32 Architectures
+    Software Developer’s Manual, Volume 1)
+
+  BND JMP
+
+
+If a REX prefix is used when it has no meaning, it is ignored.
 
 */
 
@@ -50,7 +58,7 @@ Software Developer’s Manual, Volume 1)
 //https://www.felixcloutier.com/x86/jmp
 
 //relative JMPs:
-//  JMP rel8 / Jump short	                                not sure about the 0xcb?
+//  JMP rel8 / Jump short	                                not sure about the cb?
 
 //  
 
@@ -150,6 +158,54 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
 
             GadgetLLAddGadgetNode(resultGadgetLL, curGadgetNode);
             
+            /*
+            also need to check for prefixes, and add them.
+
+            note that: The REX prefix is only available in long mode.
+            When there are two or more prefixes from a single group, the behavior is undefined. Some processors ignore the subsequent prefixes from the same group, or use only the last prefix specified for any group.
+
+            so just wtf?
+
+            (can put 1 of each group)
+            if combining a couple from the same group it will be undefined behavior. (I want it)
+            legacy prefixes:
+                group 1:
+                    0xf0 LOCK
+                    0xf2 REPNE/REPNZ
+                    0xf3 REP or REPE/REPZ
+
+                group 2:
+                    0x2e CS segmenet override
+                    0x36 SS segmenet override
+                    0x3e DS
+                    0x26 ES
+                    0x64 FS
+                    0x65 GS
+                    
+                    0x2e Branch not taken
+                    0x3e Branch taken
+
+                group 3:
+                    0x66 Operand-size override prefix
+                
+                group 4:
+                    0x67 Address-size override prefix
+            
+            
+            REW.x prefix:
+            (REX is after the prefix, meaning right before the opcode if there is one)
+            question: what will happen if I use REX in 32 bit? because 
+            `REX prefixes are instruction-prefix bytes used in 64-bit mode`
+
+            note that If a REX prefix is used when it has no meaning, it is ignored.
+            so this is good for the ROP.
+
+            VEX/XOP prefix:
+
+            okay maybe I can put a couple of good things for me.
+            ok this is a whole thing to research, I will do that later.
+
+            */
 
             buffer_p = location + curInstructionN_p->instructionInfo.mnemonicOpcodeSize;
         }
