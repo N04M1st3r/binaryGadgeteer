@@ -48,17 +48,17 @@ typedef struct MiniBranchInstructionNode{
 
 typedef struct MiniBranchInstructionLinkedList{
     MiniBranchInstructionNode *start;
-    //maybe add end for faster miniInstructionLinkedListCombine.
+    //maybe add end for faster miniBranchInstructionLinkedListCombine.
     size_t size;
 } MiniBranchInstructionLinkedList;
 
 
-int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *, uint8_t mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize, ZydisMnemonic mnemonic);
+int miniBranchInstructionLinkedListAdd(MiniBranchInstructionLinkedList *, uint8_t mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize, ZydisMnemonic mnemonic);
 
-void miniInstructionLinkedListCombine(MiniBranchInstructionLinkedList *into, MiniBranchInstructionLinkedList *from);
+void miniBranchInstructionLinkedListCombine(MiniBranchInstructionLinkedList *into, MiniBranchInstructionLinkedList *from);
 
-MiniBranchInstructionLinkedList *miniInstructionLinkedListCreate(void);
+MiniBranchInstructionLinkedList *miniBranchInstructionLinkedListCreate(void);
 
-//use this with miniInstructionLinkedListAdd.
-void miniInstructionLinkedListFreeRegular(MiniBranchInstructionLinkedList *);
+//use this with miniBranchInstructionLinkedListAdd.
+void miniBranchInstructionLinkedListFreeRegular(MiniBranchInstructionLinkedList *);
 

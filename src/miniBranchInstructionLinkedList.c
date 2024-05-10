@@ -1,4 +1,4 @@
-#include "miniInstructionLinkedList.h"
+#include "miniBranchInstructionLinkedList.h"
 #include "costumErrors.h"
 
 #include <stdlib.h>
@@ -16,10 +16,10 @@ static void MiniBranchInstructionLinkedListInit(MiniBranchInstructionLinkedList 
  * 
  * @return 0 on sucess. -1 and such on error.
 */
-int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *miniInstructionLL_p, uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize, ZydisMnemonic mnemonic){
+int miniBranchInstructionLinkedListAdd(MiniBranchInstructionLinkedList *miniInstructionLL_p, uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize, ZydisMnemonic mnemonic){
     MiniBranchInstructionNode *newNode = (MiniBranchInstructionNode *)malloc(sizeof(MiniBranchInstructionNode));
     if (newNode == NULL){
-        err("Error in Malloc inside miniInstructionLinkedListAdd, for newNode of size %ld.", sizeof(MiniBranchInstructionNode));
+        err("Error in Malloc inside miniBranchInstructionLinkedListAdd, for newNode of size %ld.", sizeof(MiniBranchInstructionNode));
         return 1;
     }
     
@@ -40,12 +40,12 @@ int miniInstructionLinkedListAdd(MiniBranchInstructionLinkedList *miniInstructio
  * 
  *  @return a pointer to mini instruction linked list. NULL if error.
  * 
- *  @note !!!!in the end call miniInstructionLinkedListFreeRegular!!!!
+ *  @note !!!!in the end call miniBranchInstructionLinkedListFreeRegular!!!!
 */
-MiniBranchInstructionLinkedList *miniInstructionLinkedListCreate(void){
+MiniBranchInstructionLinkedList *miniBranchInstructionLinkedListCreate(void){
     MiniBranchInstructionLinkedList *miniInstructionLL_p = (MiniBranchInstructionLinkedList *)malloc(sizeof(MiniBranchInstructionLinkedList));
     if (miniInstructionLL_p == NULL){
-        err("Error, Malloc for miniInstructionLL_p failed inside miniInstructionLinkedListCreate.\n");
+        err("Error, Malloc for miniInstructionLL_p failed inside miniBranchInstructionLinkedListCreate.\n");
         return NULL;
     }
     
@@ -69,11 +69,11 @@ static void MiniBranchInstructionLinkedListInit(MiniBranchInstructionLinkedList 
  * 
  * @param miniInstructionLL_p MiniBranchInstructionLinkedList to free
  * 
- * @note assuming instructions are not malloced (like in miniInstructionLinkedListAdd)
+ * @note assuming instructions are not malloced (like in miniBranchInstructionLinkedListAdd)
  * 
  * @note USING THIS!
 */
-void miniInstructionLinkedListFreeRegular(MiniBranchInstructionLinkedList *miniInstructionLL_p){
+void miniBranchInstructionLinkedListFreeRegular(MiniBranchInstructionLinkedList *miniInstructionLL_p){
     
     MiniBranchInstructionNode *curNode = miniInstructionLL_p->start;
     MiniBranchInstructionNode *tmp;
@@ -98,7 +98,7 @@ void miniInstructionLinkedListFreeRegular(MiniBranchInstructionLinkedList *miniI
  * 
  * @note it is a prefrence for into to be the larger one.
 */
-void miniInstructionLinkedListCombine(MiniBranchInstructionLinkedList *into, MiniBranchInstructionLinkedList *from){
+void miniBranchInstructionLinkedListCombine(MiniBranchInstructionLinkedList *into, MiniBranchInstructionLinkedList *from){
     //algorithm: going to the end(by looking at the next) of into and adding from->start, then adding it's size.
     if(from == NULL){
         //nothing to do.

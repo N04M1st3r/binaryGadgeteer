@@ -67,7 +67,7 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
 GadgetLL *searchBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t bufferAddrFile, size_t bufferSize, ArchInfo *arch_p){
     
     MiniBranchInstructionLinkedList *allBranchInstructionsMiniInstructionLL = arch_p->retEndings;
-    miniInstructionLinkedListCombine(allBranchInstructionsMiniInstructionLL, arch_p->jmpEndings);
+    miniBranchInstructionLinkedListCombine(allBranchInstructionsMiniInstructionLL, arch_p->jmpEndings);
 
     return searchMiniBranchInstructionsInBuffer(buffer, buffer_vaddr, bufferAddrFile, bufferSize, allBranchInstructionsMiniInstructionLL);
 }
@@ -265,9 +265,9 @@ static int initRETIntel(ArchInfo *arch_p){
         (MiniBranchInstruction){{0xC2, 0, 0}, 1, 2}, // Near RET {imm16}
         (MiniBranchInstruction){{0xCA, 0, 0}, 1, 2}  // Far RET {imm16}
     };*/
-    arch_p->retEndings = miniInstructionLinkedListCreate();
+    arch_p->retEndings = miniBranchInstructionLinkedListCreate();
     if(arch_p->retEndings == NULL){
-        err("Error creating retEndings inside initRETIntel, inside miniInstructionLinkedListCreate.");
+        err("Error creating retEndings inside initRETIntel, inside miniBranchInstructionLinkedListCreate.");
         return 1;
     }
     
@@ -277,16 +277,16 @@ static int initRETIntel(ArchInfo *arch_p){
     //not doing this in a pointer because a mini instruction is 5 bytes where a pointer is 8. (in 64 bit machines)
     
     //https://github.com/HJLebbink/asm-dude/wiki/RET
-    //error |= miniInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3, 0, 0}, 1, 0);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Near, Intel_mnemonicOpcodeSize_RET_Near, Intel_additionalSize_RET_Near, ZYDIS_MNEMONIC_RET);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_FAR, Intel_mnemonicOpcodeSize_RET_FAR, Intel_additionalSize_RET_FAR, ZYDIS_MNEMONIC_RET);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Near_imm16, Intel_mnemonicOpcodeSize_RET_Near_imm16, Intel_additionalSize_RET_Near_imm16, ZYDIS_MNEMONIC_RET);
-    error |= miniInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Far_imm16, Intel_mnemonicOpcodeSize_RET_Far_imm16, Intel_additionalSize_RET_Far_imm16, ZYDIS_MNEMONIC_RET);
+    //error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3, 0, 0}, 1, 0);
+    error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Near, Intel_mnemonicOpcodeSize_RET_Near, Intel_additionalSize_RET_Near, ZYDIS_MNEMONIC_RET);
+    error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_FAR, Intel_mnemonicOpcodeSize_RET_FAR, Intel_additionalSize_RET_FAR, ZYDIS_MNEMONIC_RET);
+    error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Near_imm16, Intel_mnemonicOpcodeSize_RET_Near_imm16, Intel_additionalSize_RET_Near_imm16, ZYDIS_MNEMONIC_RET);
+    error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Far_imm16, Intel_mnemonicOpcodeSize_RET_Far_imm16, Intel_additionalSize_RET_Far_imm16, ZYDIS_MNEMONIC_RET);
     
     //LL    mnemonicOpcode[3]   mnemonicOpcodeSize    additionSize
     if (error){
-        err("Error adding instruction to arch->retEndings, in initRETIntel at one of the miniInstructionLinkedListAdd.");
-        miniInstructionLinkedListFreeRegular(arch_p->retEndings);
+        err("Error adding instruction to arch->retEndings, in initRETIntel at one of the miniBranchInstructionLinkedListAdd.");
+        miniBranchInstructionLinkedListFreeRegular(arch_p->retEndings);
         arch_p->retEndings = NULL;
         return 2;
     }
@@ -364,11 +364,11 @@ ArchInfo *initArchInfo(const char *archName){
 void freeArchInfo(ArchInfo *arch_p){
     if (arch_p != NULL){
         if (arch_p->retEndings != NULL){
-            miniInstructionLinkedListFreeRegular(arch_p->retEndings);
+            miniBranchInstructionLinkedListFreeRegular(arch_p->retEndings);
             arch_p->retEndings = NULL; //just in case, there is no must to do that.
         }
         if (arch_p->jmpEndings != NULL){
-            miniInstructionLinkedListFreeRegular(arch_p->jmpEndings);
+            miniBranchInstructionLinkedListFreeRegular(arch_p->jmpEndings);
             arch_p->jmpEndings = NULL; //Just in case, there is no must to do that.
         }
         free(arch_p);

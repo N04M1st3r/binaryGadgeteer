@@ -1,6 +1,6 @@
 #pragma once
 
-#include "miniInstructionLinkedList.h"
+#include "miniBranchInstructionLinkedList.h"
 #include "gadgetLinkedList.h"
 
 #include <inttypes.h>
