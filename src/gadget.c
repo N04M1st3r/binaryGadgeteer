@@ -1,6 +1,7 @@
 #include "gadget.h"
 #include "costumErrors.h"
 
+#define UNUSED(x) (void)(x)
 
 static ZydisFormatter formatter;
 static ZydisDecoder decoder;
@@ -127,9 +128,8 @@ int initDecoderAndFormatter(ArchInfo *arch_p){
  * 
  * @return true
 */
-static bool alwaysTrueCondition(GadgetNode *__curGadget){
-    //so it won't be unused:
-    (void)__curGadget;
+static bool alwaysTrueCondition(GadgetNode *curGadget){
+    UNUSED(curGadget);
     return true;
 }
 
