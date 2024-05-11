@@ -58,11 +58,61 @@ If a REX prefix is used when it has no meaning, it is ignored.
 //https://www.felixcloutier.com/x86/jmp
 
 //relative JMPs:
-//  JMP rel8 / Jump short	                                not sure about the cb?
 
-//  
 
-//absolute  
+//  JMP rel8 | Jump short | EB cb	
+#define Intel_mnemonicOpcode_JMP_Short_rel8 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xEB}
+#define Intel_mnemonicOpcodeSize_JMP_Short_rel8 1
+#define Intel_additionalSize_JMP_Short_rel8 1 //cb
+
+// JMP rel16 | E9 cw        (NOT SUPPORTED IN 64 BIT!)
+#define Intel_mnemonicOpcode_JMP_Near_rel16 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xE9}
+#define Intel_mnemonicOpcodeSize_JMP_Near_rel16 1
+#define Intel_additionalSize_JMP_Near_rel16 2 //cw
+
+// JMP rel32 | E9 cd         
+#define Intel_mnemonicOpcode_JMP_Near_rel32 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xE9}
+#define Intel_mnemonicOpcodeSize_JMP_Near_rel32 1
+#define Intel_additionalSize_JMP_Near_rel32 4 //cd
+//NOTE: maybe there is a way to combine those? the rel32 and rel16?
+
+//absolute JMPs:  
+
+// JMP r/m16 | FF /4        (NOT SUPPORTED IN 64 BIT!)
+//example(me): jmp [12], jmp ax
+#define Intel_mnemonicOpcode_JMP_Near_rM16 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xFF}
+#define Intel_mnemonicOpcodeSize_JMP_Near_rM16 1
+#define Intel_additionalSize_JMP_Near_rM16 
+//I am confuzed.
+/*
+mov ax, a
+jmp ax
+jmp WORD PTR [b]
+jmp DWORD PTR [b]
+jmp QWORD PTR [b]
+
+a:
+inc ax
+
+b:
+inc bx
+
+
+0:  66 8b 04 25 00 00 00    mov    ax,WORD PTR ds:0x0
+7:  00
+8:  66 ff e0                jmp    ax
+b:  66 ff 24 25 00 00 00    jmp    WORD PTR ds:0x0
+12: 00
+13: 66 ff 2c 25 00 00 00    jmp    DWORD PTR ds:0x0
+1a: 00
+1b: ff 24 25 00 00 00 00    jmp    QWORD PTR ds:0x0
+0000000000000022 <a>:
+22: 66 ff c0                inc    ax
+0000000000000025 <b>:
+25: 66 ff c3                inc    bx
+*/
+
+
 
 
 
@@ -204,6 +254,7 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(char *buffer, ZyanU64 buff
 
             okay maybe I can put a couple of good things for me.
             ok this is a whole thing to research, I will do that later.
+            it seems very interesting!
 
             */
 
