@@ -244,7 +244,7 @@ static bool onlyPrintableAddressCondition(GadgetNode *curGadget){
  * 
  * @param curGadget The current gadget.
  * 
- * @return true if it has only printable, false otherwise.
+ * @return true if it has only printable and ends with null, false otherwise.
 */
 static bool onlyPrintableAddressOrNullConditionEnds(GadgetNode *curGadget){
     uint8_t width = 4;
