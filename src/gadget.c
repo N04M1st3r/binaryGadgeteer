@@ -51,7 +51,8 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
 
         for(size_t i = 1; i <= ZYDIS_MAX_INSTRUCTION_LENGTH; i++, runtime_address--, bufferDecode--){
             if(bufferDecode < buffer){
-                err("Cant Go that down! in expandGadgetsDown. tried: %p   where buffer: %p   at vaddr: 0x%" PRIx64 "\n", bufferDecode ,buffer ,runtime_address);
+                //err("Cant Go that down! in expandGadgetsDown. tried: %p   where buffer: %p   at vaddr: 0x%" PRIx64 "\n", bufferDecode ,buffer ,runtime_address);
+                //cant Go that down, it may be fine because execute can't be there prob.
                 break;
             }                                                               
             if(!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, bufferDecode, i, &decodedInstruction, operands))){
