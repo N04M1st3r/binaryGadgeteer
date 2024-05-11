@@ -119,4 +119,8 @@ void miniBranchInstructionLinkedListCombine(MiniBranchInstructionLinkedList *int
 
     curNode->next = from->start;
     into->size += from->size;
+    printf("new size: %ld\n", into->size);
 }
+
+
+

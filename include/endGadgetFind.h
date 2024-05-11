@@ -25,6 +25,7 @@ typedef struct ArchInfo
     //some important assembly opcodes to be saved:
     MiniBranchInstructionLinkedList *retEndings; 
     MiniBranchInstructionLinkedList *jmpEndings;
+    MiniBranchInstructionLinkedList *callEndings;
 } ArchInfo;
 
 

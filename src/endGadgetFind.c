@@ -13,6 +13,7 @@
 
 static int initRETIntel(ArchInfo *arch_p);
 static int initJMPIntel(ArchInfo *arch_p);
+static int initCALLIntel(ArchInfo *arch_p);
 static GadgetLL *searchMiniBranchInstructionsInBuffer(ArchInfo *arch_p, char *buffer, ZyanU64 buffer_vaddr, uint64_t addr_file, size_t bufferSize, MiniBranchInstructionLinkedList *curInstructionN_p);
 
 
@@ -414,6 +415,40 @@ x86(32 bit):
 #define Intel_additionalSize_JMP_FAR_ptr16_32 6
 #define Intel_checkThis_JMP_FAR_ptr16_32 false
 
+//now the CALL
+
+//https://www.felixcloutier.com/x86/call
+//E8 cw	| CALL rel16	| Near
+#define Intel_mnemonicOpcode_CALL_Near_rel16 (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xE8}
+#define Intel_mnemonicOpcodeSize_CALL_Near_rel16  1
+#define Intel_additionalSize_CALL_Near_rel16 2
+#define Intel_checkThis_CALL_Near_rel16 true //false (for some reason I can't call near all)
+//for example: `e8 b0 45` caused error.
+
+//E8 cd	| CALL rel32	| Near
+#define Intel_mnemonicOpcode_CALL_Near_rel32  (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xE8}
+#define Intel_mnemonicOpcodeSize_CALL_Near_rel32   1
+#define Intel_additionalSize_CALL_Near_rel32  4
+#define Intel_checkThis_CALL_Near_rel32  true //false (for some reason I can't call near all)
+
+//As I don't have enough time I will do the slow but easy solution.
+#define Intel_mnemonicOpcode_CALL_FF (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xff}
+#define Intel_mnemonicOpcodeSize_CALL_FF 1
+#define Intel_additionalSize_CALL_FF 8 //unknown, that is just MAX
+#define Intel_checkThis_CALL_FF true
+
+//9A cd	| CALL ptr16:16	(Invalid for 64 bit)
+#define Intel_mnemonicOpcode_CALL_Far_ptr_16_16  (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0x9a}
+#define Intel_mnemonicOpcodeSize_CALL_Far_ptr_16_16   1
+#define Intel_additionalSize_CALL_Far_ptr_16_16  4
+#define Intel_checkThis_CALL_Far_ptr_16_16  false
+
+//9A cp	| CALL ptr16:32	(Invalid for 64 bit)
+#define Intel_mnemonicOpcode_CALL_Far_ptr_16_32  (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0x9a}
+#define Intel_mnemonicOpcodeSize_CALL_Far_ptr_16_32   1
+#define Intel_additionalSize_CALL_Far_ptr_16_32  6
+#define Intel_checkThis_CALL_Far_ptr_16_32  false
+
 
 /*
 mov ax, a
@@ -463,11 +498,26 @@ b:  66 ff 24 25 00 00 00    jmp    WORD PTR ds:0x0
  * @note This is using malloc, remember to free at the end with gadgetLLFree
 */
 GadgetLL *searchBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t bufferAddrFile, size_t bufferSize, ArchInfo *arch_p){
+    //todo: copy this instead of just doing equals.
+    printf("in hre\n");
+    //can also put them all together before:
+    //MiniBranchInstructionLinkedList *allBranchInstructionsMiniInstructionLL = arch_p->retEndings;
     
-    MiniBranchInstructionLinkedList *allBranchInstructionsMiniInstructionLL = arch_p->retEndings;
-    miniBranchInstructionLinkedListCombine(allBranchInstructionsMiniInstructionLL, arch_p->jmpEndings);
+    GadgetLL *retInstructions = searchMiniBranchInstructionsInBuffer(arch_p, buffer, buffer_vaddr, bufferAddrFile, bufferSize, arch_p->retEndings);
 
-    return searchMiniBranchInstructionsInBuffer(arch_p, buffer, buffer_vaddr, bufferAddrFile, bufferSize, allBranchInstructionsMiniInstructionLL);
+    GadgetLL *allBranchInstructions = retInstructions;
+
+    GadgetLL *jmpInstructions = searchMiniBranchInstructionsInBuffer(arch_p, buffer, buffer_vaddr, bufferAddrFile, bufferSize, arch_p->jmpEndings);
+    GadgetLLCombine(allBranchInstructions, jmpInstructions);
+    gadgetLLFreeOnly(jmpInstructions);
+
+    GadgetLL *callInstructions = searchMiniBranchInstructionsInBuffer(arch_p, buffer, buffer_vaddr, bufferAddrFile, bufferSize, arch_p->callEndings);
+    GadgetLLCombine(allBranchInstructions, callInstructions);
+    gadgetLLFreeOnly(callInstructions);
+
+
+
+    return allBranchInstructions;
 }
 
 /**
@@ -552,6 +602,8 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(ArchInfo *arch_p, char *bu
                 curInstructionLength = decodedInstruction.length;
                 //printf("WOHO FOUND IN %lx\n", buffer_vaddr+offset);
             }
+
+            printf("WOHO FOUND IN %lx\n", buffer_vaddr+offset);
 
             MiniInstructionNode *miniInstNode = MiniInstructionNodeCreate(curInstructionMnemonic, curInstructionLength, location, NULL);
             if(miniInstNode == NULL){
@@ -757,28 +809,23 @@ static int initJMPIntel(ArchInfo *arch_p){
     
 
     int error = 0;
-    //arrays are of size MAX_MEMONIC_OPCODE_LEN(3) 
-    //not doing this in a pointer because a mini instruction is 5 bytes where a pointer is 8. (in 64 bit machines)
-    
-    //https://github.com/HJLebbink/asm-dude/wiki/RET
-    //error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3, 0, 0}, 1, 0);
-    //error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_RET_Far_imm16, Intel_mnemonicOpcodeSize_RET_Far_imm16, Intel_additionalSize_RET_Far_imm16, ZYDIS_MNEMONIC_RET, Intel_checkThis_RET_Far_imm16);
+
     if(arch_p->machine_mode == ZYDIS_MACHINE_MODE_LONG_64){
         //64-Bit Mode	
 
     }else{
         //Compat/Leg Mode
-        error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_JMP_Near_rel16, Intel_mnemonicOpcodeSize_JMP_Near_rel16, Intel_additionalSize_JMP_Near_rel16, ZYDIS_MNEMONIC_JMP, Intel_checkThis_JMP_Near_rel16);
+        error |= miniBranchInstructionLinkedListAdd(arch_p->jmpEndings, Intel_mnemonicOpcode_JMP_Near_rel16, Intel_mnemonicOpcodeSize_JMP_Near_rel16, Intel_additionalSize_JMP_Near_rel16, ZYDIS_MNEMONIC_JMP, Intel_checkThis_JMP_Near_rel16);
 
-        error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_JMP_FAR_ptr16_16, Intel_mnemonicOpcodeSize_JMP_FAR_ptr16_16, Intel_additionalSize_JMP_FAR_ptr16_16, ZYDIS_MNEMONIC_JMP, Intel_checkThis_JMP_FAR_ptr16_16);
-        error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_JMP_FAR_ptr16_32, Intel_mnemonicOpcodeSize_JMP_FAR_ptr16_32, Intel_additionalSize_JMP_FAR_ptr16_32, ZYDIS_MNEMONIC_RET, Intel_checkThis_JMP_FAR_ptr16_32);
+        error |= miniBranchInstructionLinkedListAdd(arch_p->jmpEndings, Intel_mnemonicOpcode_JMP_FAR_ptr16_16, Intel_mnemonicOpcodeSize_JMP_FAR_ptr16_16, Intel_additionalSize_JMP_FAR_ptr16_16, ZYDIS_MNEMONIC_JMP, Intel_checkThis_JMP_FAR_ptr16_16);
+        error |= miniBranchInstructionLinkedListAdd(arch_p->jmpEndings, Intel_mnemonicOpcode_JMP_FAR_ptr16_32, Intel_mnemonicOpcodeSize_JMP_FAR_ptr16_32, Intel_additionalSize_JMP_FAR_ptr16_32, ZYDIS_MNEMONIC_RET, Intel_checkThis_JMP_FAR_ptr16_32);
     }
 
-    error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_JMP_Short_rel8, Intel_mnemonicOpcodeSize_JMP_Short_rel8, Intel_additionalSize_JMP_Short_rel8, ZYDIS_MNEMONIC_JMP, Intel_checkThis_JMP_Short_rel8);
-    error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_JMP_Near_rel32, Intel_mnemonicOpcodeSize_JMP_Near_rel32, Intel_additionalSize_JMP_Near_rel32, ZYDIS_MNEMONIC_JMP, Intel_checkThis_JMP_Near_rel32);
+    error |= miniBranchInstructionLinkedListAdd(arch_p->jmpEndings, Intel_mnemonicOpcode_JMP_Short_rel8, Intel_mnemonicOpcodeSize_JMP_Short_rel8, Intel_additionalSize_JMP_Short_rel8, ZYDIS_MNEMONIC_JMP, Intel_checkThis_JMP_Short_rel8);
+    error |= miniBranchInstructionLinkedListAdd(arch_p->jmpEndings, Intel_mnemonicOpcode_JMP_Near_rel32, Intel_mnemonicOpcodeSize_JMP_Near_rel32, Intel_additionalSize_JMP_Near_rel32, ZYDIS_MNEMONIC_JMP, Intel_checkThis_JMP_Near_rel32);
 
 
-    error |= miniBranchInstructionLinkedListAdd(arch_p->retEndings, Intel_mnemonicOpcode_JMP_FF, Intel_mnemonicOpcodeSize_JMP_FF, Intel_additionalSize_JMP_FF, ZYDIS_MNEMONIC_JMP, Intel_checkThis_JMP_FF);
+    error |= miniBranchInstructionLinkedListAdd(arch_p->jmpEndings, Intel_mnemonicOpcode_JMP_FF, Intel_mnemonicOpcodeSize_JMP_FF, Intel_additionalSize_JMP_FF, ZYDIS_MNEMONIC_JMP, Intel_checkThis_JMP_FF);
 
 
     if (error){
@@ -791,6 +838,50 @@ static int initJMPIntel(ArchInfo *arch_p){
     return 0;
 }
 
+
+/**
+ * Like initRETIntel but for call.
+ * 
+ * @param arch, well the arch you want to do it on
+ * 
+ * @return 0 on success. otherwise any other number on error.
+*/
+static int initCALLIntel(ArchInfo *arch_p){
+    arch_p->callEndings = miniBranchInstructionLinkedListCreate();
+    if(arch_p->callEndings == NULL){
+        err("Error creating callEndings inside initCALLIntel, inside miniBranchInstructionLinkedListCreate.");
+        return 1;
+    }
+    
+
+    int error = 0;
+
+    if(arch_p->machine_mode == ZYDIS_MACHINE_MODE_LONG_64){
+        //64-Bit Mode	
+
+    }else{
+        //Compat/Leg Mode
+        error |= miniBranchInstructionLinkedListAdd(arch_p->callEndings, Intel_mnemonicOpcode_CALL_Far_ptr_16_16, Intel_mnemonicOpcodeSize_CALL_Far_ptr_16_16, Intel_additionalSize_CALL_Far_ptr_16_16, ZYDIS_MNEMONIC_CALL, Intel_checkThis_CALL_Far_ptr_16_16);
+        error |= miniBranchInstructionLinkedListAdd(arch_p->callEndings, Intel_mnemonicOpcode_CALL_Far_ptr_16_32, Intel_mnemonicOpcodeSize_CALL_Far_ptr_16_32, Intel_additionalSize_CALL_Far_ptr_16_32, ZYDIS_MNEMONIC_CALL, Intel_checkThis_CALL_Far_ptr_16_32);
+
+    }
+
+    error |= miniBranchInstructionLinkedListAdd(arch_p->callEndings, Intel_mnemonicOpcode_CALL_Near_rel16, Intel_mnemonicOpcodeSize_CALL_Near_rel16, Intel_additionalSize_CALL_Near_rel16, ZYDIS_MNEMONIC_CALL, Intel_checkThis_CALL_Near_rel16);
+
+    error |= miniBranchInstructionLinkedListAdd(arch_p->callEndings, Intel_mnemonicOpcode_CALL_Near_rel32, Intel_mnemonicOpcodeSize_CALL_Near_rel32, Intel_additionalSize_CALL_Near_rel32, ZYDIS_MNEMONIC_CALL, Intel_checkThis_CALL_Near_rel32);
+
+    error |= miniBranchInstructionLinkedListAdd(arch_p->callEndings, Intel_mnemonicOpcode_CALL_FF, Intel_mnemonicOpcodeSize_CALL_FF, Intel_additionalSize_CALL_FF, ZYDIS_MNEMONIC_CALL, Intel_checkThis_CALL_FF);
+
+
+    if (error){
+        err("Error adding instruction to arch->callEndings, in initJMPIntel at one of the miniBranchInstructionLinkedListAdd.");
+        miniBranchInstructionLinkedListFreeRegular(arch_p->callEndings);
+        arch_p->callEndings = NULL;
+        return 2;
+    }
+
+    return 0;
+}
 
 
 /**
@@ -834,6 +925,12 @@ ArchInfo *initArchInfo(const char *archName){
 
     if (initJMPIntel(arch_p)){
         err("Error inside initArchInfo in initJMPIntel.");
+        freeArchInfo(arch_p);
+        return NULL;
+    }
+
+    if(initCALLIntel(arch_p)){
+        err("Error inside initArchInfo in initCALLIntel.");
         freeArchInfo(arch_p);
         return NULL;
     }

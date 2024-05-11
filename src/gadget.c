@@ -226,7 +226,10 @@ void GadgetLLShowBasedCondition(GadgetLL *gadgetsLL, bool (*checkCondition)(Gadg
 
             if(!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, bufferDecode, instLength, &decodedInstruction, operands))){
                             //Cant decode this, no such instruction.
-                            err("NO INSTRUCTION, HOW DID IT GET HERE?");
+                            err("NO INSTRUCTION, HOW DID IT GET HERE inside GadgetLLShowBasedCondition at ZydisDecoderDecodeFull?");
+                            /*for(int i=0; i<instLength; i++){
+                                printf("%hhx ", bufferDecode[i]);
+                            }*/
                             exit(123);
                             continue;
                         }
