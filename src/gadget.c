@@ -221,18 +221,48 @@ static bool isCharPrintable(char a){
 static bool onlyPrintableAddressCondition(GadgetNode *curGadget){
     uint8_t width = 4;
     uint64_t address = curGadget->vaddr;
+    char currentChar;
 
     if(decoder.machine_mode == ZYDIS_MACHINE_MODE_LONG_64){
         width = 8;
     }
     for(; width!=0; width--){
-        char currentChar = (char) (address & 0xff);
+        currentChar = (char) (address & 0xff);
         if (isCharPrintable(currentChar))
             return false;
         address >>= 8;
     }
     
     return true;
+}
+
+
+/**
+ * Helper for GadgetLLShowOnlyPrintableAddress.
+ * shows only the printable addresses or NULL.
+ * or null meaning null in the end.
+ * 
+ * @param curGadget The current gadget.
+ * 
+ * @return true if it has only printable, false otherwise.
+*/
+static bool onlyPrintableAddressOrNullConditionEnds(GadgetNode *curGadget){
+    uint8_t width = 4;
+    uint64_t address = curGadget->vaddr;
+    char currentChar;
+
+    if(decoder.machine_mode == ZYDIS_MACHINE_MODE_LONG_64){
+        width = 8;
+    }
+    for(; width != 0; width--){
+        currentChar = (char) (address & 0xff);
+        if (isCharPrintable(currentChar))
+            break;
+        address >>= 8;
+    }
+
+    //now for what is left it has to be NULL! or in other words the adderss left has to be 0
+    return address == 0;
 }
 
 /**
@@ -264,6 +294,18 @@ void GadgetLLShowOnlyPrintableAddress(GadgetLL *gadgetsLL){
 void GadgetLLShowOnlyPrintableAddressEnds(GadgetLL *gadgetsLL){
     GadgetLLShowBasedCondition(gadgetsLL, onlyPrintableAddressConditionEnds);
 }
+
+/**
+ * Shows all the gadgets that are printable or null, but only the ends.
+ * 
+ * or null meaning null in the end.
+ * 
+ * @param gadgetsLL gadgets link list pointer.
+*/
+void GadgetLLShowOnlyPrintableOrNullAddress(GadgetLL *gadgetsLL){
+    GadgetLLShowBasedCondition(gadgetsLL, onlyPrintableAddressOrNullConditionEnds);
+}
+
 
 
 /**

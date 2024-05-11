@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
     //now I will go into more depth in each one.
     //GadgetLLShowAll(allGadgetsLL);
     GadgetLLShowOnlyEnds(allGadgetsLL);
-    //GadgetLLShowOnlyPrintableAddressEnds(allGadgetsLL);
+    //GadgetLLShowOnlyPrintableOrNullAddress(allGadgetsLL);
 
     //can also maybe sort by whatever with merge sort, https://www.geeksforgeeks.org/sorting-a-singly-linked-list/
 

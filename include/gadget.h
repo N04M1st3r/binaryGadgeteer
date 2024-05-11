@@ -15,3 +15,5 @@ void GadgetLLShowOnlyEnds(GadgetLL *gadgetsLL);
 
 void GadgetLLShowOnlyPrintableAddress(GadgetLL *gadgetsLL);
 void GadgetLLShowOnlyPrintableAddressEnds(GadgetLL *gadgetsLL);
+
+void GadgetLLShowOnlyPrintableOrNullAddress(GadgetLL *gadgetsLL);
