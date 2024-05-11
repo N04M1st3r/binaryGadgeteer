@@ -6,6 +6,8 @@
 static ZydisFormatter formatter;
 static ZydisDecoder decoder;
 
+static bool IsMnemonicBranchNotConditionBranch(ZydisMnemonic mnemonic);
+
 static bool alwaysTrueCondition(GadgetNode *curGadget);
 static bool onlyEndsCondition(GadgetNode *curGadget);
 
@@ -63,6 +65,10 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
             if (decodedInstruction.length != i)
                 continue;
             
+            if(IsMnemonicBranchNotConditionBranch(decodedInstruction.mnemonic)){
+                continue;
+            }
+            
             GadgetNode *newGadgetNode = GadgetNodeCreateFromDecodedInstAndNextGadget(&decodedInstruction, curGadget, bufferDecode, runtime_address);
             if ( newGadgetNode == NULL ){
                 err("Error in expandGadgetsDown while calling GadgetNodeCreateFromDecodedInstAndNextGadget.");
@@ -92,6 +98,27 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
     gadgetLLFreeOnly(nextLevelGadgetLL);
 
     return curLevelGadgetLL;
+}
+
+/**
+ * Checks if the mnemonic given is a branch instruction (not includign jcc, conditional jump instructions)
+ * if it is returns true, else false.
+ * 
+ * @param mnemonic The instruction mnemonic.
+ *  
+ * @return true if the instruction is a branch instruction(not conditional), else false.
+*/
+static bool IsMnemonicBranchNotConditionBranch(ZydisMnemonic mnemonic){
+    //IRET maybe also?
+    switch(mnemonic){
+        case ZYDIS_MNEMONIC_RET: 
+        case ZYDIS_MNEMONIC_JMP:
+        case ZYDIS_MNEMONIC_CALL:
+            return true; 
+        default:
+            return false;
+    }
+    return false;
 }
 
 
