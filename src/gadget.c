@@ -10,6 +10,11 @@ static bool IsMnemonicBranchNotConditionBranch(ZydisMnemonic mnemonic);
 
 static bool alwaysTrueCondition(GadgetNode *curGadget);
 static bool onlyEndsCondition(GadgetNode *curGadget);
+static bool onlyPrintableAddressCondition(GadgetNode *curGadget);
+static bool onlyPrintableAddressConditionEnds(GadgetNode *curGadget);
+
+static bool isCharPrintable(char a);
+
 
 /**
  * Expands currentGadgets to have more gadgets, will go down depth number layers.
@@ -193,7 +198,72 @@ void GadgetLLShowOnlyEnds(GadgetLL *gadgetsLL){
     GadgetLLShowBasedCondition(gadgetsLL, onlyEndsCondition);
 }
 
+/**
+ * Checks if a character is printable (in ascii table).
+ * 
+ * @param c the chatacter.
+ * 
+ * @return True if the a is printable, False otherwise.
+ * @cite https://www.asciitable.com/
+*/
+static bool isCharPrintable(char a){
+    return a >= 0x20 && a <= 0x7E;
+}
 
+/**
+ * Helper for GadgetLLShowOnlyPrintableAddress.
+ * shows only the printable addresses.
+ * 
+ * @param curGadget The current gadget.
+ * 
+ * @return true if it has only printable, false otherwise.
+*/
+static bool onlyPrintableAddressCondition(GadgetNode *curGadget){
+    uint8_t width = 4;
+    uint64_t address = curGadget->vaddr;
+
+    if(decoder.machine_mode == ZYDIS_MACHINE_MODE_LONG_64){
+        width = 8;
+    }
+    for(; width!=0; width--){
+        char currentChar = (char) (address & 0xff);
+        if (isCharPrintable(currentChar))
+            return false;
+        address >>= 8;
+    }
+    
+    return true;
+}
+
+/**
+ * Helper for GadgetLLShowOnlyPrintableAddressEnds
+ * shows only the printable addresses which are ends.
+ * 
+ * @param curGadget The current gadget.
+ * 
+ * @return true if it has only printable and is an end, false otherwise.
+*/
+static bool onlyPrintableAddressConditionEnds(GadgetNode *curGadget){
+    return onlyEndsCondition(curGadget) && onlyPrintableAddressCondition(curGadget);
+}
+
+/**
+ * Shows all the gadgets that are printable.
+ * 
+ * @param gadgetsLL gadgets link list pointer.
+*/
+void GadgetLLShowOnlyPrintableAddress(GadgetLL *gadgetsLL){
+    GadgetLLShowBasedCondition(gadgetsLL, onlyPrintableAddressCondition);
+}
+
+/**
+ * Shows all the gadgets that are printable, but only the ends.
+ * 
+ * @param gadgetsLL gadgets link list pointer.
+*/
+void GadgetLLShowOnlyPrintableAddressEnds(GadgetLL *gadgetsLL){
+    GadgetLLShowBasedCondition(gadgetsLL, onlyPrintableAddressConditionEnds);
+}
 
 
 /**

@@ -499,7 +499,6 @@ b:  66 ff 24 25 00 00 00    jmp    WORD PTR ds:0x0
 */
 GadgetLL *searchBranchInstructionsInBuffer(char *buffer, ZyanU64 buffer_vaddr, uint64_t bufferAddrFile, size_t bufferSize, ArchInfo *arch_p){
     //todo: copy this instead of just doing equals.
-    printf("in hre\n");
     //can also put them all together before:
     //MiniBranchInstructionLinkedList *allBranchInstructionsMiniInstructionLL = arch_p->retEndings;
     
@@ -602,8 +601,6 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(ArchInfo *arch_p, char *bu
                 curInstructionLength = decodedInstruction.length;
                 //printf("WOHO FOUND IN %lx\n", buffer_vaddr+offset);
             }
-
-            printf("WOHO FOUND IN %lx\n", buffer_vaddr+offset);
 
             MiniInstructionNode *miniInstNode = MiniInstructionNodeCreate(curInstructionMnemonic, curInstructionLength, location, NULL);
             if(miniInstNode == NULL){

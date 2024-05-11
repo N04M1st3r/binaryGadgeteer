@@ -12,3 +12,6 @@ void GadgetLLShowAll(GadgetLL *gadgetsLL);
 void GadgetLLShowBasedCondition(GadgetLL *gadgetsLL, bool (*checkCondition)(GadgetNode *));
 
 void GadgetLLShowOnlyEnds(GadgetLL *gadgetsLL);
+
+void GadgetLLShowOnlyPrintableAddress(GadgetLL *gadgetsLL);
+void GadgetLLShowOnlyPrintableAddressEnds(GadgetLL *gadgetsLL);
