@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 
+//TODO: change name to something like MiniSearchInstructionList or something, because it helps to search the instructions. (but critical)
+
 static void MiniBranchInstructionLinkedListInit(MiniBranchInstructionLinkedList *);
 
 /**
@@ -13,10 +15,11 @@ static void MiniBranchInstructionLinkedListInit(MiniBranchInstructionLinkedList 
  * @param additionSize  the addition size that needs to be added for the opcode (the operands).
  * @param miniInstructionLL_p mini instruction linked list pointer.
  * @param mnemonic the zydis mnemonic number, can derive this myself but it is more easy like this.
+ * @param checkThis A hacky solution, for if to check when founding the instruction to do everything.
  * 
  * @return 0 on sucess. -1 and such on error.
 */
-int miniBranchInstructionLinkedListAdd(MiniBranchInstructionLinkedList *miniInstructionLL_p, uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize, ZydisMnemonic mnemonic){
+int miniBranchInstructionLinkedListAdd(MiniBranchInstructionLinkedList *miniInstructionLL_p, uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN], uint8_t mnemonicOpcodeSize, uint8_t additionSize, ZydisMnemonic mnemonic, bool checkThis){
     MiniBranchInstructionNode *newNode = (MiniBranchInstructionNode *)malloc(sizeof(MiniBranchInstructionNode));
     if (newNode == NULL){
         err("Error in Malloc inside miniBranchInstructionLinkedListAdd, for newNode of size %ld.", sizeof(MiniBranchInstructionNode));
@@ -27,6 +30,7 @@ int miniBranchInstructionLinkedListAdd(MiniBranchInstructionLinkedList *miniInst
     newNode->instructionInfo.mnemonicOpcodeSize = mnemonicOpcodeSize;
     memcpy(newNode->instructionInfo.mnemonicOpcode, mnemonicOpcode, MAX_MEMONIC_OPCODE_LEN);
     newNode->instructionInfo.mnemonic = mnemonic;
+    newNode->instructionInfo.checkThis = checkThis;
 
     newNode->next = miniInstructionLL_p->start;
 

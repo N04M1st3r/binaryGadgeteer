@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <Zydis/Zydis.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define MAX_MEMONIC_OPCODE_LEN 3
 
@@ -37,9 +38,9 @@ Example 2:
 typedef struct MiniBranchInstruction{ //saving the minimum info needed on the instruction (and diffrerent from regular instruciton because I need to search with that)
     uint8_t mnemonicOpcode[MAX_MEMONIC_OPCODE_LEN];       /*Max mnemonicOpcode/startOpcode length is 3 (according to intel manual), start opcode*/
     uint8_t mnemonicOpcodeSize;
-    uint8_t additionSize;
+    uint8_t additionSize; //in a case checkThis is true, this is max.
     ZydisMnemonic mnemonic;
-
+    bool checkThis; //A hacky solution becuase I don't have time, make better later. when this is on the others are unknown except the mnemonic and mnemonicOpcode(kinda)
 } MiniBranchInstruction; //YOU ARE NOT SUPPOUS TO CREATE OBJECT OF THIS, just use miniInstructionLinkedListFreeNoInstructionInfo
 
 typedef struct MiniBranchInstructionNode{
@@ -54,7 +55,7 @@ typedef struct MiniBranchInstructionLinkedList{
 } MiniBranchInstructionLinkedList;
 
 
-int miniBranchInstructionLinkedListAdd(MiniBranchInstructionLinkedList *, uint8_t mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize, ZydisMnemonic mnemonic);
+int miniBranchInstructionLinkedListAdd(MiniBranchInstructionLinkedList *, uint8_t mnemonicOpcode[3], uint8_t mnemonicOpcodeSize, uint8_t additionSize, ZydisMnemonic mnemonic, bool checkThis);
 
 void miniBranchInstructionLinkedListCombine(MiniBranchInstructionLinkedList *into, MiniBranchInstructionLinkedList *from);
 
