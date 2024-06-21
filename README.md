@@ -1,6 +1,10 @@
 # binaryGadgeteer 
-TODO write description later  
+binaryGadgeteer finds gadgets inside X86 & X86-64 (32/64 bit) ELF's.
+similer to ROPgadget and ropper.
 
+note that this is using zydis disassembler, and not capstone disassembler unlike ropper and ROPgadget.
+
+(Zydis supports only  X86 & X86-64)
 ## installation 
 
 $ sudo apt install libelf-dev  
