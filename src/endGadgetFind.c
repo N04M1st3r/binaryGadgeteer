@@ -87,6 +87,8 @@ it seems very interesting!
 //RET:
 //https://www.felixcloutier.com/x86/ret
 
+//maybe put __ or _ in the #define's (no time to do now)
+
 //my theory: first ?(4) bits, the instruction, then bit[4](5th) tells if FAR, then bit[7](8th) tells imm16 or not.
 #define Intel_mnemonicOpcode_RET_Near (uint8_t [MAX_MEMONIC_OPCODE_LEN]){0xC3} //0b11000011
 #define Intel_mnemonicOpcodeSize_RET_Near 1
@@ -537,6 +539,7 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(ArchInfo *arch_p, char *bu
 
     //from here bad
     //cam get decoder from the decoder but this is like this to prove that this is bad.
+
     ZydisDecoder decoder;
     if (!ZYAN_SUCCESS(ZydisDecoderInit(&decoder, arch_p->machine_mode, arch_p->stack_width))){
         err("Error Initiating decoder, at searchMiniBranchInstructionsInBuffer with ZydisDecoderInit.");
@@ -571,9 +574,11 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(ArchInfo *arch_p, char *bu
 
         bool doCheck = curInstructionN_p->instructionInfo.checkThis; //Bad and hacky..
         
+
         while ( (location = memmem(buffer_p, bufferSize - (buffer_p-buffer), curInstructionN_p->instructionInfo.mnemonicOpcode, curInstructionN_p->instructionInfo.mnemonicOpcodeSize)) ){
             //Found :)
             uint64_t offset = location - buffer;
+
             //printf("woho found RET {0x%" PRIx8 "} in that buffer at: %p which is %ld FINAL: 0x%" PRIx64 "\n", curInstructionN_p->instructionInfo.mnemonicOpcode[0] ,location, location - buffer, buf_vaddr+location - buffer);
             //each one I find I will write its address
             if(curInstructionLength + offset > bufferSize){
@@ -584,7 +589,6 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(ArchInfo *arch_p, char *bu
                 //or in other words it reads until what is calcualted, not after.
                 break;
             }
-            
             if (doCheck){
                 //again.. bad and hacky..
                 
@@ -599,7 +603,7 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(ArchInfo *arch_p, char *bu
                 }
                 //this is a good instruction woho.
                 curInstructionLength = decodedInstruction.length;
-                //printf("WOHO FOUND IN %lx\n", buffer_vaddr+offset);
+                
             }
 
             MiniInstructionNode *miniInstNode = MiniInstructionNodeCreate(curInstructionMnemonic, curInstructionLength, location, NULL);
@@ -627,7 +631,6 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(ArchInfo *arch_p, char *bu
                 gadgetLLFreeAll(resultGadgetLL);
                 return NULL;
             }
-
             GadgetLLAddGadgetNode(resultGadgetLL, curGadgetNode);
             
             
@@ -638,6 +641,7 @@ static GadgetLL *searchMiniBranchInstructionsInBuffer(ArchInfo *arch_p, char *bu
             //if I do want things that are on the same things.
             buffer_p = location + 1;
         }
+
     }
 
     resultGadgetLL->start = resultGadgetLL->start->next;

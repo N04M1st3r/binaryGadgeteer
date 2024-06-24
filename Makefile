@@ -17,7 +17,7 @@ ZYDIS_INC_PARAMS = $(foreach d, $(ZYDIS_INC_DIRS), -I$(d))
 LIB_DIRS = $(ZYDIS_DIR)/build
 LIB_PARAMS = $(foreach d, $(LIB_DIRS), -L$(d))
 
-LIBS = -lZydis -lelf
+LIBS = -lZydis
 CFILES = $(foreach d, $(CDIR), $(wildcard $(d)/*.c))
 OBJECTS = $(patsubst %.c, $(ODIR)/%.o, $(notdir $(CFILES)))
 

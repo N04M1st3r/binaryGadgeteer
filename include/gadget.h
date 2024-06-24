@@ -17,3 +17,16 @@ void GadgetLLShowOnlyPrintableAddress(GadgetLL *gadgetsLL);
 void GadgetLLShowOnlyPrintableAddressEnds(GadgetLL *gadgetsLL);
 
 void GadgetLLShowOnlyPrintableOrNullAddress(GadgetLL *gadgetsLL);
+
+
+typedef struct SearchInfo{
+    char *searchAsm;
+    uint64_t vaddr; //(UINT64_MAX is NON)
+} SearchInfo;
+
+
+void printRegsStatistics(GadgetLL *gadgetsLL, bool is64bit);
+
+void getSearchInfoArr(GadgetLL *gadgetsLL, SearchInfo *searches, size_t searchesLen);
+
+void GadgetLLSearchIntoArr(GadgetLL *gadgetsLL, SearchInfo *searches, size_t searchesLen);

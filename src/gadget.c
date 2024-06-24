@@ -15,6 +15,7 @@ static bool onlyPrintableAddressConditionEnds(GadgetNode *curGadget);
 
 static bool isCharPrintable(char a);
 
+static void _printRegsStatistics(GadgetLL *gadgetsLL, SearchInfo *regsSearch, size_t searchesLen);
 
 /**
  * Expands currentGadgets to have more gadgets, will go down depth number layers.
@@ -59,18 +60,16 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
                 //err("Cant Go that down! in expandGadgetsDown. tried: %p   where buffer: %p   at vaddr: 0x%" PRIx64 "\n", bufferDecode ,buffer ,runtime_address);
                 //cant Go that down, it may be fine because execute can't be there prob.
                 break;
-            }                                                               
+            }                     
+
             if(!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, bufferDecode, i, &decodedInstruction, operands))){
                             //Cant decode this, no such instruction.
                             continue;
                         }
-            /*if (decodedInstruction.length < i) //not including prefixes in this.
-                continue; //maybe break;? no becuase there can be mini instructions inside big instructions. 
-            if(decodedInstruction.length > i)
-                continue;*/
-            if (decodedInstruction.length != i)
-                continue;
             
+            if (decodedInstruction.length != i-1)
+                continue;
+
             if(IsMnemonicBranchNotConditionBranch(decodedInstruction.mnemonic)){
                 continue;
             }
@@ -87,6 +86,9 @@ GadgetLL *expandGadgetsDown(char *buffer, uint64_t buf_vaddr, uint64_t buf_fileO
                 gadgetLLFreeAll(curLevelGadgetLL);
                 return NULL;
             }
+
+            if(runtime_address == 0x000000000040126d)
+                printf("added?\n");
 
             GadgetLLAddGadgetNode(curLevelGadgetLL, newGadgetNode);
         }
@@ -137,7 +139,6 @@ static bool IsMnemonicBranchNotConditionBranch(ZydisMnemonic mnemonic){
  * @return 0 if success, anything else on error.
 */
 int initDecoderAndFormatter(ArchInfo *arch_p){
-    
     if (!ZYAN_SUCCESS(ZydisDecoderInit(&decoder, arch_p->machine_mode, arch_p->stack_width))){
         err("Error Initiating decoder, at initDecoderAndFormatter with ZydisDecoderInit.");
         return 1;
@@ -363,3 +364,132 @@ void GadgetLLShowBasedCondition(GadgetLL *gadgetsLL, bool (*checkCondition)(Gadg
 }
 
 
+
+/**
+ * Prints all the register statistics, both for x86 and x64.
+ * 
+ * @param gadgetsLL gadgets link list pointer.
+ * @param is64bit   True if 64 bit, false otherwise.
+ */
+void printRegsStatistics(GadgetLL *gadgetsLL, bool is64bit){
+    if(is64bit){
+        SearchInfo regsSearch[] = {
+            {"pop rax", UINT64_MAX},
+            {"pop rbx", UINT64_MAX},
+            {"pop rcx", UINT64_MAX},
+            {"pop rdx", UINT64_MAX},
+            {"pop rsi", UINT64_MAX},
+            {"pop rdi", UINT64_MAX},
+            {"pop rbp", UINT64_MAX},
+            {"pop rsp", UINT64_MAX}
+        }; //can add r10,11,12,13,...15 but no one uses those usually.
+        _printRegsStatistics(gadgetsLL, regsSearch, sizeof(regsSearch)/sizeof(SearchInfo));
+    }else{
+        SearchInfo regsSearch[] = {
+            {"pop eax", UINT64_MAX},
+            {"pop ebx", UINT64_MAX},
+            {"pop ecx", UINT64_MAX},
+            {"pop edx", UINT64_MAX},
+            {"pop esi", UINT64_MAX},
+            {"pop edi", UINT64_MAX},
+            {"pop ebp", UINT64_MAX},
+            {"pop esp", UINT64_MAX}
+        };
+        _printRegsStatistics(gadgetsLL, regsSearch, sizeof(regsSearch)/sizeof(SearchInfo));
+    }
+}
+
+/**
+ * Internal function to print the registers statistics
+ * 
+ * @param 
+ */
+static void _printRegsStatistics(GadgetLL *gadgetsLL, SearchInfo *regsSearch, size_t searchesLen){
+    getSearchInfoArr(gadgetsLL, regsSearch, searchesLen);
+    size_t counter = 0;
+    for(size_t i=0; i<searchesLen; i++){
+        if(regsSearch[i].vaddr != UINT64_MAX){
+            printf("%s - 0x%" PRIx64 "\n", regsSearch[i].searchAsm, regsSearch[i].vaddr);
+            counter++;
+        }
+    }
+
+    printf("vulnerable: %.2f%% \n", ((float)counter/(float)searchesLen)*100);
+
+}
+
+
+/**
+ * Searches gadgets and puts all the register's locations into the RegisterInfo struct inside searches.
+ * 
+ * @param gadgetsLL gadgets link list pointer.
+ * @param searches  SearchInfo struct array pointer which holds what to search and place to hold the found location.
+ * @param searchesLen The length of searches.
+ */
+void getSearchInfoArr(GadgetLL *gadgetsLL, SearchInfo *searches, size_t searchesLen){
+    //maybe write this better later.
+
+    //note: this was written in such a shortage of time, prob bad with prefix and..
+    GadgetLLSearchIntoArr(gadgetsLL, searches, searchesLen);    
+}
+
+
+/**
+ * Searches gadgets inside gadgetLL and puts all the register's locations into
+ * the RegisterInfo struct inside searches, knows what to search also thanks to searches
+ * 
+ * @param gadgetsLL gadgets link list pointer.
+ * @param searches  SearchInfo struct array pointer which holds what to search and place to hold the found location.
+ * @param searchesLen The length of searches.
+ * 
+*/
+void GadgetLLSearchIntoArr(GadgetLL *gadgetsLL, SearchInfo *searches, size_t searchesLen){
+    ZydisDecodedInstruction decodedInstruction;
+    ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+    char decodedBuffer[256];
+
+    ZyanU8 *bufferDecode;
+    ZyanU64 runtime_address;
+    ZyanU8 instLength;
+    MiniInstructionNode *curInstNode;
+
+    for(GadgetNode *curGadget = gadgetsLL->start; curGadget != NULL; curGadget = curGadget->next){
+        //if(!checkCondition(curGadget))
+        //        continue;
+
+        runtime_address = curGadget->vaddr;
+        
+
+        for(curInstNode = curGadget->first; curInstNode != NULL; runtime_address += instLength, curInstNode = curInstNode->next){
+            bufferDecode = curInstNode->miniInst.instructionFullOpcode;
+            instLength = curInstNode->miniInst.instructionLength;
+
+            if(!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, bufferDecode, instLength, &decodedInstruction, operands))){
+                            //Cant decode this, no such instruction.
+                            err("NO INSTRUCTION, HOW DID IT GET HERE inside GadgetLLShowBasedCondition at ZydisDecoderDecodeFull?");
+                            /*for(int i=0; i<instLength; i++){
+                                printf("%hhx ", bufferDecode[i]);
+                            }*/
+                            exit(123);
+                            continue;
+                        }
+            
+
+            ZydisFormatterFormatInstruction(&formatter, &decodedInstruction, operands,
+                decodedInstruction.operand_count_visible, decodedBuffer, sizeof(decodedBuffer), runtime_address, ZYAN_NULL);
+            //(passing ZYAN_NULL in user_data)
+
+            //printf("%s", decodedBuffer);
+            //if(curInstNode->next != NULL)
+            //    printf(" -> ");
+            for(size_t i = 0; i < searchesLen; i++){
+                if (searches[i].vaddr == UINT64_MAX && !strcmp(searches[i].searchAsm, decodedBuffer)){
+                    searches[i].vaddr = runtime_address;
+                }
+            }
+
+        }
+
+        
+    }
+}

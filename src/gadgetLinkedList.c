@@ -131,6 +131,28 @@ void gadgetLLFreeAll(GadgetLL *gadgetLL){
     free(gadgetLL);
 }
 
+
+/**
+ * Removes/frees all the gadgets the satisfy the certin condition.
+ * 
+ * @param gadgetsLL gadgets link list pointer.
+ * @param checkCondition function pointer to a function that gets GadgetNode * and returns true/false, it will give this function GadgetNode * and 
+ *                       it will need to return true if to show that GadgetNode, else false.
+*/
+void GadgetLLFreeBasedCondition(GadgetLL *gadgetLL, bool (*checkCondition)(GadgetNode *)){
+    GadgetNode *cur = gadgetLL->start;
+    ZydisDecodedInstruction decodedInstruction;
+    ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+    
+    ZyanU8 *bufferDecode;
+    ZyanU64 runtime_address;
+    ZyanU8 instLength;
+    MiniInstructionNode *curInstNode;
+
+
+}
+
+
 /**
  * Frees only the gadgetLL.
  * 

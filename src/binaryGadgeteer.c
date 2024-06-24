@@ -45,18 +45,19 @@
 
 
 
-#define READ_AMOUNT 10000
-#define DEFAULT_DEPTH 3
+#define READ_AMOUNT 0x10000
+#define DEFAULT_DEPTH 4
 
 
 static uint64_t base_address_number = 0;
 static char* filename = NULL;
 static uint8_t depth = DEFAULT_DEPTH; 
 
+
+//add later:    " -a, --address 0XADDRESS           Give the start address in hex.\n"
 static char const *HELP_TEXT =
     "Usage: %s [OPTIONS] BINARY_FILE ....\n"
     "Description of the program here.\n\n"
-    " -a, --address 0XADDRESS           Give the start address in hex.\n"
     " -v, --version                     Display version and information and exit.\n"
     " -h, --help                        Display this help and exit.\n"
     " -o, --output outputfile.txt       Give output file.\n"
@@ -299,8 +300,11 @@ int main(int argc, char *argv[])
             
             //now here I will add them to all my gadgets
 
+            //it earses it in expandGadgetsDown
             GadgetLL *allCurGadgets = expandGadgetsDown(buffer, buf_vaddr, buf_fileOffset, readAmount, currentBranchGadgets, depth-1);
             
+            
+
             //for the edge (very very edge or error) case where allCurGadgets is NULL (or none found or depth=1).
             if(allCurGadgets == NULL){
                 if(allGadgetsLL == NULL){
@@ -328,13 +332,17 @@ int main(int argc, char *argv[])
 
 
     //now I will go into more depth in each one.
-    //GadgetLLShowAll(allGadgetsLL);
-    GadgetLLShowOnlyEnds(allGadgetsLL);
+    GadgetLLShowAll(allGadgetsLL);
+    
+    //GadgetLLShowOnlyEnds(allGadgetsLL);
+    
     //GadgetLLShowOnlyPrintableOrNullAddress(allGadgetsLL);
 
     //can also maybe sort by whatever with merge sort, https://www.geeksforgeeks.org/sorting-a-singly-linked-list/
+    
+    //add precentage to see how much you are "vulnerable", just how many POPs you have
 
-
+    printRegsStatistics(allGadgetsLL, is64Bit());
 
     //Frees:
     gadgetLLFreeAll(allGadgetsLL);
